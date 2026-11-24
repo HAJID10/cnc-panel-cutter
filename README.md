@@ -36,6 +36,48 @@ mark the areas the bit must never touch, and the app writes the program for the 
 | Tools | *Tools* tab: add a bit, change its width, choose the one used for new cuts. |
 | Files | *File*: new panel, open / save (`.json`), export G-code (`.nc`). Ctrl+Z / Ctrl+Y undo and redo. |
 
+### A short walkthrough
+
+This example uses every feature once. It cuts a 4 × 3 ft sheet into parts for a small cabinet.
+
+1. **New panel.** In *File › New panel…*, enter length 914.4, width 1219.2, thickness 18 (mm).
+2. **Tools.** Open the *Tools* tab and add a bit named `1/4 in bit`, 6 mm wide. Select it and use
+   *Change width…* to set it to the real 6.35 mm. The 4 mm *Default bit* is still used for new cuts.
+3. **Border.** Click *Border*, then type a final width of 1200 and a final length of 900, and press *Add*.
+   The sheet is trimmed all around and stays centred.
+4. **Straight cuts.**
+   - Click *Vertical*, measure from *Left edge* with a distance of 600, then *Add*.
+   - Add a second one measured from *Existing cut* (x = 600), *Right of it*, at 300. It lands at x = 900.
+   - Click *Horizontal*, measure from *Top edge* with a distance of 450, then *Add*.
+5. **A groove for a shelf.** Still in *Horizontal*, use a distance of 225, choose the `1/4 in bit`, set the
+   depth to 6, then *Add*. It is drawn lighter because it doesn't go through the panel.
+6. **A hand hole.** Click *Rectangle*, then click two opposite corners in the bottom-left part of the panel.
+   Switch to *Select / move*, click the rectangle and type exact values: left 150, top 600, width 300,
+   height 150. Press *Apply*.
+7. **A decorative L.** Click *L-shape* and type start (950, 500), corner (1150, 850) and depth 9.
+   Press *Add*.
+8. **A clamp.** Click *Forbidden zone* and add left 280, top 400, width 100, height 100.
+   - The horizontal cut at 450 runs under it, so it turns red and a message explains why.
+   - Try a *Vertical* cut at 330: it is refused.
+   - Try *File › Export G-code…*: it is refused too, because one cut still touches the clamp.
+9. **Fix it.** In *Select / move*, click the zone, change its top to 470 and press *Apply*. The red cut turns
+   back to normal.
+10. **Tool rules.** In the *Tools* tab, try to remove the `1/4 in bit`: it is refused, because the groove uses it.
+11. **Move, snap, undo.**
+    - In the side panel, tick *Show grid* and set the spacing to 50. Drag the rectangle: it snaps to the grid.
+    - Ctrl+Z puts it back, and Ctrl+Y moves it again.
+    - Select the L, press Delete, then Ctrl+Z to bring it back.
+    - Escape cancels a rectangle or an L after its first click.
+12. **Inches.** In *View › Inches*, every value switches to inches (the panel is 48 × 36 in). Switch back
+    with *View › Millimetres*.
+13. **View.** Zoom with the mouse wheel and pan by dragging an empty spot. *Fit panel to window* brings it
+    all back.
+14. **Files.**
+    - *File › Save…* as `cabinet.json`. Create a *New panel*, then *File › Open…* `cabinet.json`: everything
+      comes back, including the clamp.
+    - *File › Export G-code…* as `cabinet.nc`. The program cuts with the 4 mm bit first, then stops (`M0`) so
+      you can load the `1/4 in bit` for the groove.
+
 ### G-code conventions
 
 - Millimetres, absolute coordinates (`G21 G90`).

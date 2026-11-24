@@ -32,11 +32,11 @@ public class BorderCutPanel extends CutEditorPanel {
 
     @Override
     protected void create() {
-        controller.addBorderCut(readMm(width), readMm(length), selectedToolId());
+        controller.addBorderCut(readMm(width), readMm(length), selectedToolId(), selectedDepth());
     }
 
     @Override
     protected void update(CutDto cut) {
-        controller.editCut(cut.id(), null, readMm(width), readMm(length), selectedToolId());
+        controller.editCut(cut.id(), null, readMm(width), readMm(length), selectedToolId(), selectedDepth());
     }
 }

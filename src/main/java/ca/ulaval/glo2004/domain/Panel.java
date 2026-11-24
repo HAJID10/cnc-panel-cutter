@@ -98,7 +98,6 @@ public class Panel implements Serializable {
             tool.setWidth(oldWidth); // a wider tool would no longer fit in one of its cuts
             throw e;
         }
-        cuts.stream().filter(cut -> cut.getTool() == tool).forEach(Cut::toolChanged);
     }
 
     /** Tool used for a new cut: the one asked for, or the default tool. */
@@ -115,8 +114,27 @@ public class Panel implements Serializable {
 
     // --- Adding cuts ---
 
-    /** Adds a cut after checking that it lies on the panel, fits its tool and is not a duplicate. */
+    /**
+     * Adds a cut with the given depth, or through the whole panel if {@code depth} is null.
+     */
+    public void addCut(Cut cut, Double depth) {
+        double d = depth == null ? thickness : depth;
+        checkDepth(d);
+        cut.setDepth(d);
+        addCut(cut);
+    }
+
+    /** A cut can go from just below the surface down to the full thickness (cutting right through). */
+    private void checkDepth(double depth) {
+        if (depth <= 0 || depth > thickness + EPSILON) {
+            throw new IllegalArgumentException("The depth must be more than 0 and at most the panel thickness ("
+                    + thickness + " mm).");
+        }
+    }
+
+    /** Adds a cut (with its depth already set) after checking that it lies on the panel, fits its tool and is not a duplicate. */
     public void addCut(Cut cut) {
+        checkDepth(cut.getDepth());
         if (!isInside(cut.getOrigin()) || !isInside(cut.getDestination())) {
             throw new IllegalArgumentException("The cut goes outside the panel.");
         }
@@ -133,29 +151,49 @@ public class Panel implements Serializable {
     }
 
     public void addVerticalCut(double x, UUID toolId) {
-        addCut(new VerticalCut(new Point2D.Double(x, 0), new Point2D.Double(x, length), toolForNewCut(toolId)));
+        addVerticalCut(x, toolId, null);
+    }
+
+    public void addVerticalCut(double x, UUID toolId, Double depth) {
+        addCut(new VerticalCut(new Point2D.Double(x, 0), new Point2D.Double(x, length), toolForNewCut(toolId)), depth);
     }
 
     public void addHorizontalCut(double y, UUID toolId) {
-        addCut(new HorizontalCut(new Point2D.Double(0, y), new Point2D.Double(width, y), toolForNewCut(toolId)));
+        addHorizontalCut(y, toolId, null);
+    }
+
+    public void addHorizontalCut(double y, UUID toolId, Double depth) {
+        addCut(new HorizontalCut(new Point2D.Double(0, y), new Point2D.Double(width, y), toolForNewCut(toolId)), depth);
     }
 
     /** The two points are opposite corners, in any order. */
     public void addRectangularCut(Point2D.Double corner1, Point2D.Double corner2, UUID toolId) {
+        addRectangularCut(corner1, corner2, toolId, null);
+    }
+
+    public void addRectangularCut(Point2D.Double corner1, Point2D.Double corner2, UUID toolId, Double depth) {
         Point2D.Double topLeft = new Point2D.Double(Math.min(corner1.x, corner2.x), Math.min(corner1.y, corner2.y));
         double w = Math.abs(corner2.x - corner1.x);
         double h = Math.abs(corner2.y - corner1.y);
-        addCut(new RectangularCut(topLeft, w, h, toolForNewCut(toolId)));
+        addCut(new RectangularCut(topLeft, w, h, toolForNewCut(toolId)), depth);
     }
 
     public void addLCut(Point2D.Double origin, Point2D.Double corner, UUID toolId) {
-        addCut(new LCut(origin, corner, toolForNewCut(toolId)));
+        addLCut(origin, corner, toolId, null);
+    }
+
+    public void addLCut(Point2D.Double origin, Point2D.Double corner, UUID toolId, Double depth) {
+        addCut(new LCut(origin, corner, toolForNewCut(toolId)), depth);
     }
 
     /** Trims the panel to {@code finalWidth} × {@code finalLength}, centred. */
     public void addBorderCut(double finalWidth, double finalLength, UUID toolId) {
+        addBorderCut(finalWidth, finalLength, toolId, null);
+    }
+
+    public void addBorderCut(double finalWidth, double finalLength, UUID toolId, Double depth) {
         Point2D.Double topLeft = new Point2D.Double(((width - finalWidth) / 2), ((length - finalLength) / 2));
-        addCut(new BorderCut(topLeft, finalWidth, finalLength, toolForNewCut(toolId)));
+        addCut(new BorderCut(topLeft, finalWidth, finalLength, toolForNewCut(toolId)), depth);
     }
 
     // --- Changing cuts ---
@@ -214,6 +252,11 @@ public class Panel implements Serializable {
             cut.setTool(oldTool);
             throw e;
         }
+    }
+
+    public void setCutDepth(UUID cutId, double depth) {
+        checkDepth(depth);
+        getCut(cutId).setDepth(depth);
     }
 
     public void removeCut(UUID cutId) {

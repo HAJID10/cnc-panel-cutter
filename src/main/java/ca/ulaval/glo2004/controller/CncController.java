@@ -81,26 +81,46 @@ public class CncController {
     }
 
     // --- Cuts ---
-    // toolId may be null: the default tool is then used.
+    // toolId may be null: the default tool is then used. depth may be null: the cut goes right through.
 
     public void addVerticalCut(double x, UUID toolId) {
-        change(() -> panel.addVerticalCut(x, toolId));
+        addVerticalCut(x, toolId, null);
+    }
+
+    public void addVerticalCut(double x, UUID toolId, Double depth) {
+        change(() -> panel.addVerticalCut(x, toolId, depth));
     }
 
     public void addHorizontalCut(double y, UUID toolId) {
-        change(() -> panel.addHorizontalCut(y, toolId));
+        addHorizontalCut(y, toolId, null);
+    }
+
+    public void addHorizontalCut(double y, UUID toolId, Double depth) {
+        change(() -> panel.addHorizontalCut(y, toolId, depth));
     }
 
     public void addRectangularCut(Point2D.Double corner1, Point2D.Double corner2, UUID toolId) {
-        change(() -> panel.addRectangularCut(corner1, corner2, toolId));
+        addRectangularCut(corner1, corner2, toolId, null);
+    }
+
+    public void addRectangularCut(Point2D.Double corner1, Point2D.Double corner2, UUID toolId, Double depth) {
+        change(() -> panel.addRectangularCut(corner1, corner2, toolId, depth));
     }
 
     public void addLCut(Point2D.Double origin, Point2D.Double corner, UUID toolId) {
-        change(() -> panel.addLCut(origin, corner, toolId));
+        addLCut(origin, corner, toolId, null);
+    }
+
+    public void addLCut(Point2D.Double origin, Point2D.Double corner, UUID toolId, Double depth) {
+        change(() -> panel.addLCut(origin, corner, toolId, depth));
     }
 
     public void addBorderCut(double finalWidth, double finalLength, UUID toolId) {
-        change(() -> panel.addBorderCut(finalWidth, finalLength, toolId));
+        addBorderCut(finalWidth, finalLength, toolId, null);
+    }
+
+    public void addBorderCut(double finalWidth, double finalLength, UUID toolId, Double depth) {
+        change(() -> panel.addBorderCut(finalWidth, finalLength, toolId, depth));
     }
 
     public void moveCut(UUID cutId, Point2D.Double newOrigin) {
@@ -119,8 +139,12 @@ public class CncController {
      * Applies several edits to one cut as a single undo step. Any argument may be null to leave that part alone
      * (width and height go together).
      */
-    public void editCut(UUID cutId, Point2D.Double newOrigin, Double newWidth, Double newHeight, UUID toolId) {
+    public void editCut(UUID cutId, Point2D.Double newOrigin, Double newWidth, Double newHeight, UUID toolId,
+                        Double depth) {
         change(() -> {
+            if (depth != null) {
+                panel.setCutDepth(cutId, depth);
+            }
             if (toolId != null) {
                 panel.setCutTool(cutId, toolId);
             }
@@ -131,6 +155,10 @@ public class CncController {
                 panel.moveCut(cutId, newOrigin);
             }
         });
+    }
+
+    public void setCutDepth(UUID cutId, double depth) {
+        change(() -> panel.setCutDepth(cutId, depth));
     }
 
     public void deleteCut(UUID cutId) {

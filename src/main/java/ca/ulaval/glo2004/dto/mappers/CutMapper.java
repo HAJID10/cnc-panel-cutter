@@ -28,6 +28,7 @@ public class CutMapper {
         };
         // Keep the identity and selection, so a cut can still be found after an undo or a load.
         cut.setId(dto.id());
+        cut.setDepth(dto.depth());
         cut.setSelected(dto.selected());
         return cut;
     }

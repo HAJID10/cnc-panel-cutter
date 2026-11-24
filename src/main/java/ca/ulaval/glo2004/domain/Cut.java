@@ -23,6 +23,7 @@ public abstract class Cut implements Serializable {
     protected Point2D.Double origin;
     protected Point2D.Double destination;
     protected Tool tool;
+    /** How deep the tool goes (mm). Set by the panel: the full thickness unless asked otherwise. */
     protected double depth;
     protected boolean selected;
 
@@ -33,11 +34,10 @@ public abstract class Cut implements Serializable {
         if (tool == null) {
             throw new IllegalArgumentException("A cut needs a tool.");
         }
-        // Defensive copies: java.awt.Point2D.Double is mutable and must not be shared with the caller.
+        // Defensive copies: Point2D.Double is mutable and must not be shared with the caller.
         this.origin = copy(origin);
         this.destination = copy(destination);
         this.tool = tool;
-        this.depth = tool.getWidth();
         this.id = UUID.randomUUID();
     }
 
@@ -46,7 +46,7 @@ public abstract class Cut implements Serializable {
     /** Line followed by the centre of the tool. */
     protected abstract Shape path();
 
-    /** Point2D.Double used to describe where the cut is (shown to the user). */
+    /** Point used to describe where the cut is (shown to the user). */
     public abstract Point2D.Double referencePoint();
 
     /** True if clicking inside the closed path also selects the cut (rectangular cuts). */
@@ -153,6 +153,14 @@ public abstract class Cut implements Serializable {
         return depth;
     }
 
+    /** The panel checks that the depth is not more than its thickness. */
+    public void setDepth(double depth) {
+        if (depth <= 0) {
+            throw new IllegalArgumentException("The depth must be positive.");
+        }
+        this.depth = depth;
+    }
+
     public Tool getTool() {
         return tool;
     }
@@ -162,12 +170,6 @@ public abstract class Cut implements Serializable {
             throw new IllegalArgumentException("A cut needs a tool.");
         }
         this.tool = tool;
-        this.depth = tool.getWidth();
-    }
-
-    /** Call when the width of this cut's tool has changed. */
-    public void toolChanged() {
-        this.depth = tool.getWidth();
     }
 
     public boolean isSelected() {

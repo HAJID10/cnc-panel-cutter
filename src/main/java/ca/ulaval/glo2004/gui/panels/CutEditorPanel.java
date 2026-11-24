@@ -27,6 +27,7 @@ public abstract class CutEditorPanel extends JPanel {
     private final Runnable onChange;
     private final JPanel form = new JPanel(new GridLayout(0, 2, 6, 6));
     private final JComboBox<ToolDto> toolBox = new JComboBox<>();
+    private final JTextField depth = new JTextField();
     private final JButton actionButton = new JButton("Add");
     private final JLabel hint = new JLabel();
     private CutDto editing; // null while creating
@@ -38,9 +39,12 @@ public abstract class CutEditorPanel extends JPanel {
         setBorder(BorderFactory.createTitledBorder(title));
 
         JPanel bottom = new JPanel(new BorderLayout(6, 6));
-        JPanel toolRow = new JPanel(new GridLayout(1, 2, 6, 6));
+        JPanel toolRow = new JPanel(new GridLayout(2, 2, 6, 6));
         toolRow.add(new JLabel("Tool:"));
         toolRow.add(toolBox);
+        toolRow.add(new JLabel("Depth (" + Units.symbol() + "):"));
+        toolRow.add(depth);
+        depth.setToolTipText("The panel thickness cuts right through; less makes a groove.");
         bottom.add(toolRow, BorderLayout.NORTH);
         bottom.add(actionButton, BorderLayout.CENTER);
         bottom.add(hint, BorderLayout.SOUTH);
@@ -68,6 +72,7 @@ public abstract class CutEditorPanel extends JPanel {
         editing = null;
         actionButton.setText("Add");
         reloadTools(controller.getDefaultTool().map(ToolDto::id).orElse(null));
+        depth.setText(Units.format(controller.getPanel().thickness()));
         clearFields();
     }
 
@@ -76,6 +81,7 @@ public abstract class CutEditorPanel extends JPanel {
         editing = cut;
         actionButton.setText("Apply");
         reloadTools(cut.tool().id());
+        depth.setText(Units.format(cut.depth()));
         fillFields(cut);
     }
 
@@ -87,6 +93,11 @@ public abstract class CutEditorPanel extends JPanel {
                 toolBox.setSelectedItem(tool);
             }
         }
+    }
+
+    /** Depth typed in the form. */
+    protected Double selectedDepth() {
+        return readMm(depth);
     }
 
     protected UUID selectedToolId() {

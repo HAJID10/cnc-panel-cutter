@@ -276,7 +276,7 @@ public class DrawingPanel extends JPanel {
             case L -> "Corner: " + point(cut.destination());
         };
         return "<html>" + cut.type() + "<br>Start: " + point(cut.origin()) + "<br>" + size
-                + "<br>Tool: " + cut.tool().name() + "</html>";
+                + "<br>Depth: " + Units.withUnit(cut.depth()) + "<br>Tool: " + cut.tool().name() + "</html>";
     }
 
     /** "(12.5, 30)" */

@@ -44,11 +44,11 @@ public class RectangularCutPanel extends CutEditorPanel {
     protected void create() {
         Point2D.Double topLeft = new Point2D.Double(readMm(x), readMm(y));
         Point2D.Double opposite = new Point2D.Double(topLeft.x + readMm(width), topLeft.y + readMm(height));
-        controller.addRectangularCut(topLeft, opposite, selectedToolId());
+        controller.addRectangularCut(topLeft, opposite, selectedToolId(), selectedDepth());
     }
 
     @Override
     protected void update(CutDto cut) {
-        controller.editCut(cut.id(), new Point2D.Double(readMm(x), readMm(y)), readMm(width), readMm(height), selectedToolId());
+        controller.editCut(cut.id(), new Point2D.Double(readMm(x), readMm(y)), readMm(width), readMm(height), selectedToolId(), selectedDepth());
     }
 }

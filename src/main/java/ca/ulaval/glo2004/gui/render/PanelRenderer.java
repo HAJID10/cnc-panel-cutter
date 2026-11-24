@@ -21,6 +21,7 @@ public class PanelRenderer {
     private static final Color PANEL = new Color(222, 196, 150);
     private static final Color PANEL_EDGE = new Color(90, 70, 40);
     private static final Color CUT = new Color(30, 30, 30);
+    private static final Color SHALLOW = new Color(170, 140, 95);
     private static final Color SELECTED = new Color(30, 110, 230);
     private static final Color GRID = new Color(0, 0, 0, 40);
 
@@ -47,13 +48,28 @@ public class PanelRenderer {
             if (cut.id().equals(dragged)) {
                 shape = AffineTransform.getTranslateInstance(dx, dy).createTransformedShape(shape);
             }
-            g.setColor(cut.selected() ? SELECTED : CUT);
+            g.setColor(cut.selected() ? SELECTED : colourForDepth(cut.depth(), panel.thickness()));
             g.fill(shape);
         }
 
         g.setColor(PANEL_EDGE);
         g.setStroke(new BasicStroke(0f)); // thinnest line, whatever the zoom
         g.draw(board);
+    }
+
+    /**
+     * Through cuts are drawn dark; shallower grooves get lighter, down to a light shade of the wood colour for a
+     * groove that barely scratches the surface.
+     */
+    static Color colourForDepth(double depth, double thickness) {
+        double ratio = Math.max(0, Math.min(1, depth / thickness));
+        double t = 0.25 + 0.75 * ratio; // never fully invisible
+        return new Color(mix(SHALLOW.getRed(), CUT.getRed(), t), mix(SHALLOW.getGreen(), CUT.getGreen(), t),
+                mix(SHALLOW.getBlue(), CUT.getBlue(), t));
+    }
+
+    private static int mix(int from, int to, double t) {
+        return (int) Math.round(from + (to - from) * t);
     }
 
     private void drawGrid(Graphics2D g, PanelDto panel, double spacing) {

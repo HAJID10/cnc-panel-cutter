@@ -88,7 +88,7 @@ class CncControllerTest {
     void editCutIsOneUndoStep() {
         controller.addRectangularCut(new Point2D.Double(100, 100), new Point2D.Double(200, 200), null);
         CutDto before = cuts().get(0);
-        controller.editCut(before.id(), new Point2D.Double(300, 300), 50.0, 60.0, null);
+        controller.editCut(before.id(), new Point2D.Double(300, 300), 50.0, 60.0, null, null);
         assertEquals(new Point2D.Double(300, 300), cuts().get(0).origin());
         controller.undo();
         assertEquals(before, cuts().get(0));
@@ -122,7 +122,7 @@ class CncControllerTest {
         CutDto before = cuts().get(0);
         // The resize is fine but the move goes outside the panel: nothing at all must change.
         assertThrows(IllegalArgumentException.class,
-                () -> controller.editCut(before.id(), new Point2D.Double(880, 100), 50.0, 50.0, null));
+                () -> controller.editCut(before.id(), new Point2D.Double(880, 100), 50.0, 50.0, null, null));
         assertEquals(before, cuts().get(0));
     }
 

@@ -110,9 +110,9 @@ public class StraightCutPanel extends CutEditorPanel {
     @Override
     protected void create() {
         if (vertical()) {
-            controller.addVerticalCut(position(), selectedToolId());
+            controller.addVerticalCut(position(), selectedToolId(), selectedDepth());
         } else {
-            controller.addHorizontalCut(position(), selectedToolId());
+            controller.addHorizontalCut(position(), selectedToolId(), selectedDepth());
         }
     }
 
@@ -120,6 +120,6 @@ public class StraightCutPanel extends CutEditorPanel {
     protected void update(CutDto cut) {
         double p = position();
         Point2D.Double newOrigin = vertical() ? new Point2D.Double(p, cut.origin().y) : new Point2D.Double(cut.origin().x, p);
-        controller.editCut(cut.id(), newOrigin, null, null, selectedToolId());
+        controller.editCut(cut.id(), newOrigin, null, null, selectedToolId(), selectedDepth());
     }
 }

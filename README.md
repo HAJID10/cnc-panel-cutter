@@ -113,7 +113,9 @@ gui (Swing)  ──>  controller.CncController  ──>  domain: Panel, Cut + 5 
   was and no empty undo step is left.
 - No dependencies apart from JUnit 5 (JSON reading and writing is a small class of its own).
 
-The original UML model (Visual Paradigm) is in [`docs/modele-uml.vpp`](docs/modele-uml.vpp).
+The UML model of the current code (class and sequence diagrams that GitHub draws on the page) is in
+[`docs/uml.md`](docs/uml.md). The original 2024 course model (Visual Paradigm) is still in
+[`docs/modele-uml.vpp`](docs/modele-uml.vpp).
 
 ## Changelog
 

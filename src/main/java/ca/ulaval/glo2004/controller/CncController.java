@@ -10,6 +10,7 @@ import ca.ulaval.glo2004.domain.Panel;
 import ca.ulaval.glo2004.dto.CutDto;
 import ca.ulaval.glo2004.dto.PanelDto;
 import ca.ulaval.glo2004.dto.ToolDto;
+import ca.ulaval.glo2004.dto.ZoneDto;
 import ca.ulaval.glo2004.dto.mappers.CutMapper;
 import ca.ulaval.glo2004.dto.mappers.PanelMapper;
 import ca.ulaval.glo2004.dto.mappers.ToolMapper;
@@ -173,7 +174,7 @@ public class CncController {
     // --- Selection (not part of the history: undo only undoes real changes) ---
 
     public Optional<CutDto> findCutAt(Point2D.Double point) {
-        return panel.findCutAt(point).map(cutMapper::toDto);
+        return panel.findCutAt(point).map(cut -> cutMapper.toDto(cut, panel.isInForbiddenZone(cut)));
     }
 
     public void selectCut(UUID cutId) {
@@ -185,7 +186,26 @@ public class CncController {
     }
 
     public Optional<CutDto> getSelectedCut() {
-        return panel.getSelectedCut().map(cutMapper::toDto);
+        return panel.getSelectedCut().map(cut -> cutMapper.toDto(cut, panel.isInForbiddenZone(cut)));
+    }
+
+    // --- Forbidden zones ---
+
+    public void addZone(Point2D.Double corner1, Point2D.Double corner2) {
+        change(() -> panel.addZone(corner1, corner2));
+    }
+
+    public void editZone(UUID zoneId, Point2D.Double topLeft, double width, double height) {
+        change(() -> panel.editZone(zoneId, topLeft, width, height));
+    }
+
+    public void deleteZone(UUID zoneId) {
+        change(() -> panel.removeZone(zoneId));
+    }
+
+    public Optional<ZoneDto> findZoneAt(Point2D.Double point) {
+        return panel.findZoneAt(point).flatMap(zone -> getPanel().zones().stream()
+                .filter(dto -> dto.id().equals(zone.getId())).findFirst());
     }
 
     // --- Tools ---

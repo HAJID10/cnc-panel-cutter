@@ -15,7 +15,7 @@ import ca.ulaval.glo2004.domain.cuts.RectangularCut;
 import ca.ulaval.glo2004.domain.cuts.VerticalCut;
 
 /**
- * The wooden panel and everything planned on it: its cuts and the tools available.
+ * The wooden panel and everything planned on it: its cuts, the tools available and the forbidden zones.
  * <p>
  * Axes: x goes along the <em>width</em> (left to right), y along the <em>length</em> (top to bottom). All values
  * are in millimetres.
@@ -27,6 +27,7 @@ public class Panel implements Serializable {
     private final double thickness;
     private final List<Cut> cuts = new ArrayList<>();
     private final List<Tool> tools = new ArrayList<>();
+    private final List<ForbiddenZone> zones = new ArrayList<>();
 
     public Panel(double length, double width, double thickness) {
         this(UUID.randomUUID(), length, width, thickness);
@@ -91,9 +92,17 @@ public class Panel implements Serializable {
     public void setToolWidth(UUID toolId, double newWidth) {
         Tool tool = findTool(toolId).orElseThrow(() -> new IllegalArgumentException("Unknown tool."));
         double oldWidth = tool.getWidth();
+        List<Cut> alreadyInZone = cuts.stream().filter(this::isInForbiddenZone).toList();
         tool.setWidth(newWidth);
         try {
-            cuts.stream().filter(cut -> cut.getTool() == tool).forEach(Cut::checkToolFits);
+            for (Cut cut : cuts) {
+                if (cut.getTool() == tool) {
+                    cut.checkToolFits();
+                    if (!alreadyInZone.contains(cut)) {
+                        checkZones(cut); // a wider tool could reach a zone
+                    }
+                }
+            }
         } catch (IllegalArgumentException e) {
             tool.setWidth(oldWidth); // a wider tool would no longer fit in one of its cuts
             throw e;
@@ -140,6 +149,7 @@ public class Panel implements Serializable {
         }
         cut.checkToolFits();
         checkNotDuplicate(cut);
+        checkZones(cut);
         cuts.add(cut);
     }
 
@@ -215,6 +225,7 @@ public class Panel implements Serializable {
         cut.translate(dx, dy);
         try {
             checkNotDuplicate(cut);
+            checkZones(cut);
         } catch (IllegalArgumentException e) {
             cut.translate(-dx, -dy); // put it back
             throw e;
@@ -233,6 +244,7 @@ public class Panel implements Serializable {
             }
             cut.checkToolFits();
             checkNotDuplicate(cut);
+            checkZones(cut);
         } catch (IllegalArgumentException e) {
             // Put it back exactly as it was (resizing back could round differently around the centre).
             cut.origin = oldOrigin;
@@ -245,9 +257,13 @@ public class Panel implements Serializable {
         Tool tool = findTool(toolId).orElseThrow(() -> new IllegalArgumentException("Unknown tool."));
         Cut cut = getCut(cutId);
         Tool oldTool = cut.getTool();
+        boolean wasInZone = isInForbiddenZone(cut);
         cut.setTool(tool);
         try {
             cut.checkToolFits();
+            if (!wasInZone) {
+                checkZones(cut); // a wider tool could reach a zone
+            }
         } catch (IllegalArgumentException e) {
             cut.setTool(oldTool);
             throw e;
@@ -261,6 +277,76 @@ public class Panel implements Serializable {
 
     public void removeCut(UUID cutId) {
         cuts.removeIf(cut -> cut.getId().equals(cutId));
+    }
+
+    // --- Forbidden zones ---
+
+    /**
+     * Refuses a cut whose removed material would touch a forbidden zone. Cuts that were already there when a zone
+     * was placed over them are allowed to stay (and are reported by {@link #isInForbiddenZone}).
+     */
+    private void checkZones(Cut cut) {
+        if (isInForbiddenZone(cut)) {
+            throw new IllegalArgumentException("The cut would go into a forbidden zone.");
+        }
+    }
+
+    public boolean isInForbiddenZone(Cut cut) {
+        return zones.stream().anyMatch(zone -> zone.touches(cut));
+    }
+
+    /** Adds a zone. It may cover existing cuts: they are then shown as conflicts. */
+    public void addZone(ForbiddenZone zone) {
+        checkZoneInside(zone);
+        zones.add(zone);
+    }
+
+    /** The two points are opposite corners, in any order. */
+    public void addZone(Point2D.Double corner1, Point2D.Double corner2) {
+        addZone(new ForbiddenZone(new Point2D.Double(Math.min(corner1.x, corner2.x), Math.min(corner1.y, corner2.y)),
+                Math.abs(corner2.x - corner1.x), Math.abs(corner2.y - corner1.y)));
+    }
+
+    /** Moves and resizes a zone. */
+    public void editZone(UUID zoneId, Point2D.Double topLeft, double newWidth, double newHeight) {
+        ForbiddenZone zone = getZone(zoneId);
+        Point2D.Double oldOrigin = zone.getOrigin();
+        double oldWidth = zone.getWidth();
+        double oldHeight = zone.getHeight();
+        zone.setBounds(topLeft, newWidth, newHeight);
+        try {
+            checkZoneInside(zone);
+        } catch (IllegalArgumentException e) {
+            zone.setBounds(oldOrigin, oldWidth, oldHeight);
+            throw e;
+        }
+    }
+
+    private void checkZoneInside(ForbiddenZone zone) {
+        Point2D.Double o = zone.getOrigin();
+        if (!isInside(o) || !isInside(new Point2D.Double(o.x + zone.getWidth(), o.y + zone.getHeight()))) {
+            throw new IllegalArgumentException("The forbidden zone goes outside the panel.");
+        }
+    }
+
+    public void removeZone(UUID zoneId) {
+        zones.removeIf(zone -> zone.getId().equals(zoneId));
+    }
+
+    public Optional<ForbiddenZone> findZone(UUID zoneId) {
+        return zones.stream().filter(zone -> zone.getId().equals(zoneId)).findFirst();
+    }
+
+    private ForbiddenZone getZone(UUID zoneId) {
+        return findZone(zoneId).orElseThrow(() -> new IllegalArgumentException("Unknown forbidden zone."));
+    }
+
+    public Optional<ForbiddenZone> findZoneAt(Point2D.Double point) {
+        return zones.stream().filter(zone -> zone.contains(point)).findFirst();
+    }
+
+    public List<ForbiddenZone> getZones() {
+        return Collections.unmodifiableList(zones);
     }
 
     // --- Selection ---

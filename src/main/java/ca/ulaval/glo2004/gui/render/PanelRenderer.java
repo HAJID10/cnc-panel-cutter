@@ -12,6 +12,7 @@ import java.util.function.Function;
 
 import ca.ulaval.glo2004.dto.CutDto;
 import ca.ulaval.glo2004.dto.PanelDto;
+import ca.ulaval.glo2004.dto.ZoneDto;
 
 /**
  * Draws the panel and its cuts in model coordinates (millimetres); the caller sets the zoom and offset on the
@@ -24,13 +25,17 @@ public class PanelRenderer {
     private static final Color SHALLOW = new Color(170, 140, 95);
     private static final Color SELECTED = new Color(30, 110, 230);
     private static final Color GRID = new Color(0, 0, 0, 40);
+    private static final Color CONFLICT = new Color(210, 30, 30);
+    private static final Color ZONE_FILL = new Color(220, 40, 40, 60);
+    private static final Color ZONE_EDGE = new Color(200, 30, 30);
 
     /**
      * @param cutArea    gives the removed material of a cut from its id
-     * @param dragged    id of a cut being dragged (drawn shifted by dx/dy), or null
+     * @param dragged    id of a cut or zone being dragged (drawn shifted by dx/dy), or null
+     * @param selectedZone id of the selected forbidden zone, or null
      */
     public void draw(Graphics2D g, PanelDto panel, Function<UUID, Optional<Shape>> cutArea, boolean showGrid,
-                     double gridSpacing, UUID dragged, double dx, double dy) {
+                     double gridSpacing, UUID dragged, double dx, double dy, UUID selectedZone) {
         Rectangle2D board = new Rectangle2D.Double(0, 0, panel.width(), panel.length());
         g.setColor(PANEL);
         g.fill(board);
@@ -48,13 +53,39 @@ public class PanelRenderer {
             if (cut.id().equals(dragged)) {
                 shape = AffineTransform.getTranslateInstance(dx, dy).createTransformedShape(shape);
             }
-            g.setColor(cut.selected() ? SELECTED : colourForDepth(cut.depth(), panel.thickness()));
+            g.setColor(cut.selected() ? SELECTED
+                    : cut.inForbiddenZone() ? CONFLICT
+                    : colourForDepth(cut.depth(), panel.thickness()));
             g.fill(shape);
+        }
+
+        for (ZoneDto zone : panel.zones()) {
+            boolean moving = zone.id().equals(dragged);
+            drawZone(g, zone, moving ? dx : 0, moving ? dy : 0, zone.id().equals(selectedZone));
         }
 
         g.setColor(PANEL_EDGE);
         g.setStroke(new BasicStroke(0f)); // thinnest line, whatever the zoom
         g.draw(board);
+    }
+
+    /** Translucent red rectangle with diagonal hatching, so cuts under it stay visible. */
+    private void drawZone(Graphics2D g, ZoneDto zone, double dx, double dy, boolean selected) {
+        Rectangle2D r = new Rectangle2D.Double(zone.origin().x + dx, zone.origin().y + dy, zone.width(), zone.height());
+        g.setColor(ZONE_FILL);
+        g.fill(r);
+        Shape oldClip = g.getClip();
+        g.clip(r);
+        g.setColor(ZONE_EDGE);
+        g.setStroke(new BasicStroke(0f));
+        double step = 15; // mm between hatch lines
+        for (double t = -r.getHeight(); t < r.getWidth(); t += step) {
+            g.draw(new java.awt.geom.Line2D.Double(r.getX() + t, r.getMaxY(), r.getX() + t + r.getHeight(), r.getY()));
+        }
+        g.setClip(oldClip);
+        g.setColor(selected ? SELECTED : ZONE_EDGE);
+        g.setStroke(new BasicStroke(selected ? 3f : 1.5f));
+        g.draw(r);
     }
 
     /**

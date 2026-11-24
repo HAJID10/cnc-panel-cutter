@@ -35,12 +35,14 @@ import ca.ulaval.glo2004.domain.CutType;
 import ca.ulaval.glo2004.dto.CutDto;
 import ca.ulaval.glo2004.dto.PanelDto;
 import ca.ulaval.glo2004.dto.ToolDto;
+import ca.ulaval.glo2004.dto.ZoneDto;
 import ca.ulaval.glo2004.gui.DrawingPanel.Mode;
 import ca.ulaval.glo2004.gui.panels.BorderCutPanel;
 import ca.ulaval.glo2004.gui.panels.CutEditorPanel;
 import ca.ulaval.glo2004.gui.panels.RectangularCutPanel;
 import ca.ulaval.glo2004.gui.panels.StraightCutPanel;
 import ca.ulaval.glo2004.gui.panels.ToolPanel;
+import ca.ulaval.glo2004.gui.panels.ZonePanel;
 
 /**
  * Main window: drawing area in the centre, cut and tool tabs at the bottom, and a side panel on the right that
@@ -57,6 +59,7 @@ public class MainWindow extends JFrame {
     private final Map<Mode, JToggleButton> modeButtons = new EnumMap<>(Mode.class);
     private final ButtonGroup modeGroup = new ButtonGroup();
     private final Map<CutType, CutEditorPanel> editors = new EnumMap<>(CutType.class);
+    private ZonePanel zonePanel;
 
     // What the side panel currently shows, to avoid rebuilding it (and losing typed values) on every refresh.
     private Object sideKey;
@@ -128,7 +131,8 @@ public class MainWindow extends JFrame {
         addModeButton(tab, "Rectangle", Mode.RECTANGULAR);
         addModeButton(tab, "L-shape", Mode.L);
         addModeButton(tab, "Border", Mode.BORDER);
-        JButton delete = new JButton("Delete selected cut");
+        addModeButton(tab, "Forbidden zone", Mode.ZONE);
+        JButton delete = new JButton("Delete selected");
         delete.addActionListener(e -> deleteSelected());
         tab.add(delete);
         return tab;
@@ -164,6 +168,7 @@ public class MainWindow extends JFrame {
         editors.put(CutType.HORIZONTAL, new StraightCutPanel(CutType.HORIZONTAL, controller, this::refresh));
         editors.put(CutType.RECTANGULAR, new RectangularCutPanel(controller, this::refresh));
         editors.put(CutType.BORDER, new BorderCutPanel(controller, this::refresh));
+        zonePanel = new ZonePanel(controller, this::refresh);
         defaultSide = createDefaultSide();
         sideKey = null; // forces the side panel to be shown again
     }
@@ -219,8 +224,13 @@ public class MainWindow extends JFrame {
         };
     }
 
+    /** Deletes the selected cut, or the selected forbidden zone. */
     private void deleteSelected() {
         controller.getSelectedCut().ifPresent(cut -> controller.deleteCut(cut.id()));
+        drawingPanel.getSelectedZone().ifPresent(zone -> {
+            controller.deleteZone(zone.id());
+            drawingPanel.clearSelectedZone();
+        });
         refresh();
     }
 
@@ -251,7 +261,20 @@ public class MainWindow extends JFrame {
         Mode mode = drawingPanel.getMode();
         Object key;
         JComponent content;
-        if (mode == Mode.SELECT && selected.isPresent() && editors.containsKey(selected.get().type())) {
+        Optional<ZoneDto> zone = drawingPanel.getSelectedZone();
+        if (mode == Mode.SELECT && zone.isPresent()) {
+            key = zone.get();
+            content = zonePanel;
+            if (!Objects.equals(key, sideKey)) {
+                zonePanel.showEdit(zone.get());
+            }
+        } else if (mode == Mode.ZONE) {
+            key = Mode.ZONE;
+            content = zonePanel;
+            if (!Objects.equals(key, sideKey)) {
+                zonePanel.showCreate();
+            }
+        } else if (mode == Mode.SELECT && selected.isPresent() && editors.containsKey(selected.get().type())) {
             CutDto cut = selected.get();
             key = cut; // records compare by value: a moved cut gives a new key and refills the form
             content = editors.get(cut.type());

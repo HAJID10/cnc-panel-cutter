@@ -13,6 +13,7 @@ import java.awt.event.MouseWheelEvent;
 import java.awt.geom.Line2D;
 import java.awt.geom.Path2D;
 import java.awt.geom.Rectangle2D;
+import java.util.Optional;
 import java.util.UUID;
 
 import javax.swing.JOptionPane;
@@ -22,6 +23,7 @@ import ca.ulaval.glo2004.controller.CncController;
 import ca.ulaval.glo2004.domain.CutType;
 import ca.ulaval.glo2004.dto.CutDto;
 import ca.ulaval.glo2004.dto.PanelDto;
+import ca.ulaval.glo2004.dto.ZoneDto;
 import ca.ulaval.glo2004.gui.render.PanelRenderer;
 
 /**
@@ -32,14 +34,14 @@ import ca.ulaval.glo2004.gui.render.PanelRenderer;
 public class DrawingPanel extends JPanel {
 
     /** What a click on the panel does. */
-    public enum Mode { NONE, SELECT, VERTICAL, HORIZONTAL, RECTANGULAR, BORDER, L }
+    public enum Mode { NONE, SELECT, VERTICAL, HORIZONTAL, RECTANGULAR, BORDER, L, ZONE }
 
     private final CncController controller;
     private final Runnable onChange;
     private final PanelRenderer renderer = new PanelRenderer();
 
     private Mode mode = Mode.NONE;
-    private Point2D.Double pendingPoint;   // first click of a two-click cut (rectangle, L)
+    private Point2D.Double pendingPoint;   // first click of a two-click shape (rectangle, L, zone)
     private Point2D.Double hoverPoint;     // mouse position in mm, for the two-click preview
 
     // View: screen = model * scale + offset
@@ -48,9 +50,13 @@ public class DrawingPanel extends JPanel {
     private double offsetY;
     private Point panStart;       // screen point where panning started
 
-    // Dragging a selected cut
+    // Selected forbidden zone (cuts are selected in the domain; zones only here, as they have no edit history)
+    private UUID selectedZone;
+
+    // Dragging a selected cut or zone
+    private UUID dragId;                   // the cut or zone being dragged
     private Point2D.Double dragStart;      // model point where the drag started
-    private Point2D.Double dragOrigin;     // origin of the cut when the drag started
+    private Point2D.Double dragOrigin;     // its origin when the drag started
     private CutType dragType;
     private double dragDx;
     private double dragDy;
@@ -83,7 +89,10 @@ public class DrawingPanel extends JPanel {
             @Override
             public void mouseMoved(MouseEvent e) {
                 hoverPoint = toModel(e.getPoint());
-                setToolTipText(controller.findCutAt(hoverPoint).map(DrawingPanel::describe).orElse(null));
+                setToolTipText(controller.findCutAt(hoverPoint).map(DrawingPanel::describe)
+                        .or(() -> controller.findZoneAt(hoverPoint).map(z -> "<html>Forbidden zone<br>"
+                                + Units.format(z.width()) + " × " + Units.withUnit(z.height()) + "</html>"))
+                        .orElse(null));
                 if (pendingPoint != null) {
                     repaint();
                 }
@@ -105,14 +114,18 @@ public class DrawingPanel extends JPanel {
         Point2D.Double p = toModel(e.getPoint());
         switch (mode) {
             case SELECT -> {
+                // Cuts are picked before zones, so a cut lying under a zone can still be selected and moved out.
                 var cut = controller.findCutAt(p);
+                Optional<ZoneDto> zone = cut.isPresent() ? Optional.empty() : controller.findZoneAt(p);
+                selectedZone = zone.map(ZoneDto::id).orElse(null);
                 if (cut.isPresent()) {
                     controller.selectCut(cut.get().id());
                     if (cut.get().type() != CutType.BORDER) {
-                        dragStart = p;
-                        dragOrigin = cut.get().origin();
-                        dragType = cut.get().type();
+                        startDrag(p, cut.get().id(), cut.get().origin(), cut.get().type());
                     }
+                } else if (zone.isPresent()) {
+                    controller.deselectAll();
+                    startDrag(p, zone.get().id(), zone.get().origin(), null);
                 } else {
                     controller.deselectAll();
                     panStart = e.getPoint();
@@ -121,7 +134,7 @@ public class DrawingPanel extends JPanel {
             }
             case VERTICAL -> run(() -> controller.addVerticalCut(p.x, null));
             case HORIZONTAL -> run(() -> controller.addHorizontalCut(p.y, null));
-            case RECTANGULAR, L -> {
+            case RECTANGULAR, L, ZONE -> {
                 if (pendingPoint == null) {
                     pendingPoint = p;
                     repaint();
@@ -130,6 +143,9 @@ public class DrawingPanel extends JPanel {
                     pendingPoint = null;
                     if (mode == Mode.RECTANGULAR) {
                         run(() -> controller.addRectangularCut(first, p, null));
+                    } else if (mode == Mode.ZONE) {
+                        run(() -> controller.addZone(first, p));
+                        warnAboutConflicts();
                     } else {
                         run(() -> controller.addLCut(first, p, null));
                     }
@@ -164,15 +180,48 @@ public class DrawingPanel extends JPanel {
     /** A drag only changes the model when the mouse is released: one move, one undo step. */
     private void onRelease() {
         if (dragStart != null && (dragDx != 0 || dragDy != 0)) {
-            var selected = controller.getSelectedCut();
             Point2D.Double newOrigin = new Point2D.Double(dragOrigin.x + dragDx, dragOrigin.y + dragDy);
-            selected.ifPresent(cut -> run(() -> controller.moveCut(cut.id(), newOrigin)));
+            UUID id = dragId;
+            Optional<ZoneDto> zone = controller.getPanel().zones().stream().filter(z -> z.id().equals(id)).findFirst();
+            if (zone.isPresent()) {
+                run(() -> controller.editZone(id, newOrigin, zone.get().width(), zone.get().height()));
+                warnAboutConflicts();
+            } else {
+                run(() -> controller.moveCut(id, newOrigin));
+            }
         }
+        dragId = null;
         dragStart = null;
         dragOrigin = null;
         dragDx = 0;
         dragDy = 0;
         panStart = null;
+        repaint();
+    }
+
+    private void startDrag(Point2D.Double p, UUID id, Point2D.Double origin, CutType type) {
+        dragStart = p;
+        dragId = id;
+        dragOrigin = origin;
+        dragType = type; // null for a zone: it moves freely
+    }
+
+    /** A zone may be placed over existing cuts: they turn red and the user is told why. */
+    private void warnAboutConflicts() {
+        long conflicts = controller.getPanel().cuts().stream().filter(CutDto::inForbiddenZone).count();
+        if (conflicts > 0) {
+            JOptionPane.showMessageDialog(this, conflicts + " cut(s) touch a forbidden zone. They are shown in red:\n"
+                    + "move them or change the zone before machining.", "Forbidden zone", JOptionPane.INFORMATION_MESSAGE);
+        }
+    }
+
+    /** The selected forbidden zone, if it still exists (it may have been deleted or undone). */
+    public Optional<ZoneDto> getSelectedZone() {
+        return controller.getPanel().zones().stream().filter(z -> z.id().equals(selectedZone)).findFirst();
+    }
+
+    public void clearSelectedZone() {
+        selectedZone = null;
         repaint();
     }
 
@@ -235,8 +284,9 @@ public class DrawingPanel extends JPanel {
         g2.translate(offsetX, offsetY);
         g2.scale(scale, scale);
 
-        UUID dragged = dragStart == null ? null : controller.getSelectedCut().map(CutDto::id).orElse(null);
-        renderer.draw(g2, controller.getPanel(), controller::getCutArea, showGrid, gridSpacing, dragged, dragDx, dragDy);
+        UUID dragged = dragStart == null ? null : dragId;
+        renderer.draw(g2, controller.getPanel(), controller::getCutArea, showGrid, gridSpacing, dragged, dragDx, dragDy,
+                selectedZone);
         drawPendingPreview(g2);
         g2.dispose();
     }
@@ -249,7 +299,7 @@ public class DrawingPanel extends JPanel {
         g.setColor(new Color(30, 110, 230));
         g.setStroke(new BasicStroke((float) (1.5 / scale), BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER, 10f,
                 new float[]{(float) (6 / scale)}, 0f));
-        if (mode == Mode.RECTANGULAR) {
+        if (mode == Mode.RECTANGULAR || mode == Mode.ZONE) {
             g.draw(new Rectangle2D.Double(Math.min(pendingPoint.x, hoverPoint.x), Math.min(pendingPoint.y, hoverPoint.y),
                     Math.abs(hoverPoint.x - pendingPoint.x), Math.abs(hoverPoint.y - pendingPoint.y)));
         } else {
@@ -274,7 +324,8 @@ public class DrawingPanel extends JPanel {
             case L -> "Corner: " + point(cut.destination());
         };
         return "<html>" + cut.type() + "<br>Start: " + point(cut.origin()) + "<br>" + size
-                + "<br>Depth: " + Units.withUnit(cut.depth()) + "<br>Tool: " + cut.tool().name() + "</html>";
+                + "<br>Depth: " + Units.withUnit(cut.depth()) + "<br>Tool: " + cut.tool().name()
+                + (cut.inForbiddenZone() ? "<br><b>Touches a forbidden zone</b>" : "") + "</html>";
     }
 
     /** "(12.5, 30)" */
@@ -286,6 +337,9 @@ public class DrawingPanel extends JPanel {
 
     public void setMode(Mode mode) {
         this.mode = mode;
+        if (mode != Mode.SELECT) {
+            selectedZone = null;
+        }
         cancelPending();
     }
 

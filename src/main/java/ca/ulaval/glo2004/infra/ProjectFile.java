@@ -15,6 +15,7 @@ import ca.ulaval.glo2004.domain.CutType;
 import ca.ulaval.glo2004.dto.CutDto;
 import ca.ulaval.glo2004.dto.PanelDto;
 import ca.ulaval.glo2004.dto.ToolDto;
+import ca.ulaval.glo2004.dto.ZoneDto;
 
 /**
  * Saves and opens projects as readable JSON. Example:
@@ -25,7 +26,8 @@ import ca.ulaval.glo2004.dto.ToolDto;
  *   "panel": { "id": "...", "length": 1219.2, "width": 914.4, "thickness": 18,
  *              "tools": [ { "id": "...", "name": "Saw", "width": 4, "default": true } ],
  *              "cuts":  [ { "id": "...", "type": "VERTICAL", "origin": [300, 0], "destination": [300, 1219.2],
- *                           "width": 0, "height": 1219.2, "depth": 18, "toolId": "..." } ] }
+ *                           "width": 0, "height": 1219.2, "depth": 18, "toolId": "..." } ],
+ *              "zones": [ { "id": "...", "origin": [0, 0], "width": 100, "height": 80 } ] }
  * }
  * </pre>
  * Unlike Java serialization, the file survives changes to the classes, can be read by other programs, and opening
@@ -53,6 +55,7 @@ public class ProjectFile {
         p.put("thickness", panel.thickness());
         p.put("tools", panel.tools().stream().map(ProjectFile::tool).toList());
         p.put("cuts", panel.cuts().stream().map(ProjectFile::cut).toList());
+        p.put("zones", panel.zones().stream().map(ProjectFile::zone).toList());
 
         Map<String, Object> root = new LinkedHashMap<>();
         root.put("format", FORMAT);
@@ -81,6 +84,15 @@ public class ProjectFile {
         c.put("depth", cut.depth());
         c.put("toolId", cut.tool().id().toString()); // tools are listed once, cuts refer to them
         return c;
+    }
+
+    private static Map<String, Object> zone(ZoneDto zone) {
+        Map<String, Object> z = new LinkedHashMap<>();
+        z.put("id", zone.id().toString());
+        z.put("origin", List.of(zone.origin().x, zone.origin().y));
+        z.put("width", zone.width());
+        z.put("height", zone.height());
+        return z;
     }
 
     // ------------------------------------------------------------------ JSON -> PanelDto
@@ -114,8 +126,13 @@ public class ProjectFile {
                         point(c, "destination"), number(c, "width"), number(c, "height"), number(c, "depth"),
                         tool, false));
             }
+            List<ZoneDto> zones = new ArrayList<>();
+            for (Object o : p.containsKey("zones") ? list(p, "zones") : List.of()) { // optional: may be absent
+                Map<String, Object> z = object(o, "zone");
+                zones.add(new ZoneDto(uuid(z, "id"), point(z, "origin"), number(z, "width"), number(z, "height")));
+            }
             return new PanelDto(uuid(p, "id"), number(p, "length"), number(p, "width"), number(p, "thickness"),
-                    cuts, tools);
+                    cuts, tools, zones);
         } catch (IllegalArgumentException | ClassCastException e) {
             throw new IOException("This project file can't be read: " + e.getMessage(), e);
         }

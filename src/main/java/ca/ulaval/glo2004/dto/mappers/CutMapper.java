@@ -33,8 +33,9 @@ public class CutMapper {
         return cut;
     }
 
-    public CutDto toDto(Cut cut) {
+    /** @param inForbiddenZone whether the panel reports this cut as touching a forbidden zone */
+    public CutDto toDto(Cut cut, boolean inForbiddenZone) {
         return new CutDto(cut.getId(), cut.type(), cut.getOrigin(), cut.getDestination(), cut.getWidth(),
-                cut.getHeight(), cut.getDepth(), toolMapper.toDto(cut.getTool()), cut.isSelected());
+                cut.getHeight(), cut.getDepth(), toolMapper.toDto(cut.getTool()), cut.isSelected(), inForbiddenZone);
     }
 }

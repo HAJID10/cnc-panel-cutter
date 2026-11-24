@@ -217,7 +217,7 @@ public class MainWindow extends JFrame {
         activeTool.setText(tool.map(t -> "Tool for new cuts: " + t).orElse("No tool for new cuts"));
         status.setText(String.format("Panel %.1f × %.1f × %.1f mm  |  %d cut(s)%s", panel.width(), panel.length(),
                 panel.thickness(), panel.cuts().size(),
-                selected.map(c -> "  |  Selected: " + c.type() + " at (" + c.origin().x + ", " + c.origin().y + ")").orElse("")));
+                selected.map(c -> "  |  Selected: " + c.type() + " at " + DrawingPanel.point(c.origin())).orElse("")));
 
         toolPanel.refresh();
         updateSidePanel(panel, selected);

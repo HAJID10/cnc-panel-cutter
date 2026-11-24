@@ -15,6 +15,7 @@ import javax.swing.JTextField;
 
 import ca.ulaval.glo2004.controller.CncController;
 import ca.ulaval.glo2004.dto.CutDto;
+import ca.ulaval.glo2004.gui.Units;
 import ca.ulaval.glo2004.dto.ToolDto;
 
 /**
@@ -109,9 +110,9 @@ public abstract class CutEditorPanel extends JPanel {
         onChange.run();
     }
 
-    /** Reads a whole number of millimetres from a field. */
-    protected static int readMm(JTextField field) {
-        return (int) Math.round(Double.parseDouble(field.getText().trim().replace(',', '.')));
+    /** Reads a length typed by the user, in millimetres. */
+    protected static double readMm(JTextField field) {
+        return Units.parse(field.getText());
     }
 
     protected abstract void clearFields();

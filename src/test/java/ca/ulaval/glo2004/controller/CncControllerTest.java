@@ -4,7 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.awt.Point;
+import java.awt.geom.Point2D;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -68,7 +68,7 @@ class CncControllerTest {
     void movingWithADto() {
         controller.addVerticalCut(100, null);
         // Original bug: a copy of the cut was moved.
-        controller.moveCut(cuts().get(0).id(), new Point(400, 0));
+        controller.moveCut(cuts().get(0).id(), new Point2D.Double(400, 0));
         assertEquals(400, cuts().get(0).origin().x);
     }
 
@@ -78,7 +78,7 @@ class CncControllerTest {
         controller.resizeCut(cuts().get(0).id(), 600, 800);
         assertEquals(600, cuts().get(0).width());
 
-        controller.addRectangularCut(new Point(100, 100), new Point(200, 200), null);
+        controller.addRectangularCut(new Point2D.Double(100, 100), new Point2D.Double(200, 200), null);
         controller.resizeCut(cuts().get(1).id(), 300, 50);
         assertEquals(300, cuts().get(1).width());
         assertEquals(50, cuts().get(1).height());
@@ -86,10 +86,10 @@ class CncControllerTest {
 
     @Test
     void editCutIsOneUndoStep() {
-        controller.addRectangularCut(new Point(100, 100), new Point(200, 200), null);
+        controller.addRectangularCut(new Point2D.Double(100, 100), new Point2D.Double(200, 200), null);
         CutDto before = cuts().get(0);
-        controller.editCut(before.id(), new Point(300, 300), 50, 60, null);
-        assertEquals(new Point(300, 300), cuts().get(0).origin());
+        controller.editCut(before.id(), new Point2D.Double(300, 300), 50.0, 60.0, null);
+        assertEquals(new Point2D.Double(300, 300), cuts().get(0).origin());
         controller.undo();
         assertEquals(before, cuts().get(0));
     }
@@ -97,8 +97,8 @@ class CncControllerTest {
     @Test
     void selectingByClick() {
         controller.addHorizontalCut(500, null);
-        assertTrue(controller.findCutAt(new Point(300, 501)).isPresent());
-        assertTrue(controller.findCutAt(new Point(300, 600)).isEmpty());
+        assertTrue(controller.findCutAt(new Point2D.Double(300, 501)).isPresent());
+        assertTrue(controller.findCutAt(new Point2D.Double(300, 600)).isEmpty());
     }
 
     @Test
@@ -118,11 +118,11 @@ class CncControllerTest {
 
     @Test
     void aRefusedEditChangesNothing() {
-        controller.addRectangularCut(new Point(100, 100), new Point(200, 200), null);
+        controller.addRectangularCut(new Point2D.Double(100, 100), new Point2D.Double(200, 200), null);
         CutDto before = cuts().get(0);
         // The resize is fine but the move goes outside the panel: nothing at all must change.
         assertThrows(IllegalArgumentException.class,
-                () -> controller.editCut(before.id(), new Point(880, 100), 50, 50, null));
+                () -> controller.editCut(before.id(), new Point2D.Double(880, 100), 50.0, 50.0, null));
         assertEquals(before, cuts().get(0));
     }
 
@@ -137,7 +137,7 @@ class CncControllerTest {
     @Test
     void saveAndOpen(@TempDir Path folder) throws Exception {
         controller.addVerticalCut(100, null);
-        controller.addLCut(new Point(100, 100), new Point(300, 300), null);
+        controller.addLCut(new Point2D.Double(100, 100), new Point2D.Double(300, 300), null);
         List<CutDto> before = cuts();
         String file = folder.resolve("panel.cnc").toString();
         controller.save(file);

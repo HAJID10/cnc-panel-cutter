@@ -1,6 +1,6 @@
 package ca.ulaval.glo2004.domain.cuts;
 
-import java.awt.Point;
+import java.awt.geom.Point2D;
 import java.awt.Shape;
 import java.awt.geom.Line2D;
 
@@ -11,7 +11,7 @@ import ca.ulaval.glo2004.domain.Tool;
 /** A straight cut from top to bottom: origin and destination share the same x. */
 public class VerticalCut extends Cut {
 
-    public VerticalCut(Point origin, Point destination, Tool tool) {
+    public VerticalCut(Point2D.Double origin, Point2D.Double destination, Tool tool) {
         super(origin, destination, tool);
         if (origin.x != destination.x) {
             throw new IllegalArgumentException("A vertical cut needs the same x at both ends.");
@@ -30,12 +30,12 @@ public class VerticalCut extends Cut {
 
     /** It can only slide sideways. */
     @Override
-    protected Point constrainOrigin(Point requested) {
-        return new Point(requested.x, origin.y);
+    protected Point2D.Double constrainOrigin(Point2D.Double requested) {
+        return new Point2D.Double(requested.x, origin.y);
     }
 
     @Override
-    public Point referencePoint() {
-        return new Point(origin.x, (origin.y + destination.y) / 2);
+    public Point2D.Double referencePoint() {
+        return new Point2D.Double(origin.x, (origin.y + destination.y) / 2);
     }
 }

@@ -1,6 +1,6 @@
 package ca.ulaval.glo2004.controller;
 
-import java.awt.Point;
+import java.awt.geom.Point2D;
 import java.awt.Shape;
 import java.io.IOException;
 import java.util.Optional;
@@ -83,31 +83,31 @@ public class CncController {
     // --- Cuts ---
     // toolId may be null: the default tool is then used.
 
-    public void addVerticalCut(int x, UUID toolId) {
+    public void addVerticalCut(double x, UUID toolId) {
         change(() -> panel.addVerticalCut(x, toolId));
     }
 
-    public void addHorizontalCut(int y, UUID toolId) {
+    public void addHorizontalCut(double y, UUID toolId) {
         change(() -> panel.addHorizontalCut(y, toolId));
     }
 
-    public void addRectangularCut(Point corner1, Point corner2, UUID toolId) {
+    public void addRectangularCut(Point2D.Double corner1, Point2D.Double corner2, UUID toolId) {
         change(() -> panel.addRectangularCut(corner1, corner2, toolId));
     }
 
-    public void addLCut(Point origin, Point corner, UUID toolId) {
+    public void addLCut(Point2D.Double origin, Point2D.Double corner, UUID toolId) {
         change(() -> panel.addLCut(origin, corner, toolId));
     }
 
-    public void addBorderCut(int finalWidth, int finalLength, UUID toolId) {
+    public void addBorderCut(double finalWidth, double finalLength, UUID toolId) {
         change(() -> panel.addBorderCut(finalWidth, finalLength, toolId));
     }
 
-    public void moveCut(UUID cutId, Point newOrigin) {
+    public void moveCut(UUID cutId, Point2D.Double newOrigin) {
         change(() -> panel.moveCut(cutId, newOrigin));
     }
 
-    public void resizeCut(UUID cutId, int newWidth, int newHeight) {
+    public void resizeCut(UUID cutId, double newWidth, double newHeight) {
         change(() -> panel.resizeCut(cutId, newWidth, newHeight));
     }
 
@@ -119,7 +119,7 @@ public class CncController {
      * Applies several edits to one cut as a single undo step. Any argument may be null to leave that part alone
      * (width and height go together).
      */
-    public void editCut(UUID cutId, Point newOrigin, Integer newWidth, Integer newHeight, UUID toolId) {
+    public void editCut(UUID cutId, Point2D.Double newOrigin, Double newWidth, Double newHeight, UUID toolId) {
         change(() -> {
             if (toolId != null) {
                 panel.setCutTool(cutId, toolId);
@@ -144,7 +144,7 @@ public class CncController {
 
     // --- Selection (not part of the history: undo only undoes real changes) ---
 
-    public Optional<CutDto> findCutAt(Point point) {
+    public Optional<CutDto> findCutAt(Point2D.Double point) {
         return panel.findCutAt(point).map(cutMapper::toDto);
     }
 

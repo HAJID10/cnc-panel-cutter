@@ -1,6 +1,6 @@
 package ca.ulaval.glo2004.domain;
 
-import java.awt.Point;
+import java.awt.geom.Point2D;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -132,46 +132,46 @@ public class Panel implements Serializable {
         }
     }
 
-    public void addVerticalCut(int x, UUID toolId) {
-        addCut(new VerticalCut(new Point(x, 0), new Point(x, (int) length), toolForNewCut(toolId)));
+    public void addVerticalCut(double x, UUID toolId) {
+        addCut(new VerticalCut(new Point2D.Double(x, 0), new Point2D.Double(x, length), toolForNewCut(toolId)));
     }
 
-    public void addHorizontalCut(int y, UUID toolId) {
-        addCut(new HorizontalCut(new Point(0, y), new Point((int) width, y), toolForNewCut(toolId)));
+    public void addHorizontalCut(double y, UUID toolId) {
+        addCut(new HorizontalCut(new Point2D.Double(0, y), new Point2D.Double(width, y), toolForNewCut(toolId)));
     }
 
     /** The two points are opposite corners, in any order. */
-    public void addRectangularCut(Point corner1, Point corner2, UUID toolId) {
-        Point topLeft = new Point(Math.min(corner1.x, corner2.x), Math.min(corner1.y, corner2.y));
-        int w = Math.abs(corner2.x - corner1.x);
-        int h = Math.abs(corner2.y - corner1.y);
+    public void addRectangularCut(Point2D.Double corner1, Point2D.Double corner2, UUID toolId) {
+        Point2D.Double topLeft = new Point2D.Double(Math.min(corner1.x, corner2.x), Math.min(corner1.y, corner2.y));
+        double w = Math.abs(corner2.x - corner1.x);
+        double h = Math.abs(corner2.y - corner1.y);
         addCut(new RectangularCut(topLeft, w, h, toolForNewCut(toolId)));
     }
 
-    public void addLCut(Point origin, Point corner, UUID toolId) {
+    public void addLCut(Point2D.Double origin, Point2D.Double corner, UUID toolId) {
         addCut(new LCut(origin, corner, toolForNewCut(toolId)));
     }
 
     /** Trims the panel to {@code finalWidth} × {@code finalLength}, centred. */
-    public void addBorderCut(int finalWidth, int finalLength, UUID toolId) {
-        Point topLeft = new Point((int) ((width - finalWidth) / 2), (int) ((length - finalLength) / 2));
+    public void addBorderCut(double finalWidth, double finalLength, UUID toolId) {
+        Point2D.Double topLeft = new Point2D.Double(((width - finalWidth) / 2), ((length - finalLength) / 2));
         addCut(new BorderCut(topLeft, finalWidth, finalLength, toolForNewCut(toolId)));
     }
 
     // --- Changing cuts ---
 
     /** Moves a cut so that its origin goes to {@code newOrigin} (as far as the cut type allows). */
-    public void moveCut(UUID cutId, Point newOrigin) {
+    public void moveCut(UUID cutId, Point2D.Double newOrigin) {
         Cut cut = getCut(cutId);
         if (!cut.isMovable()) {
             throw new IllegalArgumentException("This cut can't be moved.");
         }
-        Point target = cut.movedOrigin(newOrigin);
-        Point origin = cut.getOrigin();
-        Point destination = cut.getDestination();
-        int dx = target.x - origin.x;
-        int dy = target.y - origin.y;
-        if (!isInside(target) || !isInside(new Point(destination.x + dx, destination.y + dy))) {
+        Point2D.Double target = cut.movedOrigin(newOrigin);
+        Point2D.Double origin = cut.getOrigin();
+        Point2D.Double destination = cut.getDestination();
+        double dx = target.x - origin.x;
+        double dy = target.y - origin.y;
+        if (!isInside(target) || !isInside(new Point2D.Double(destination.x + dx, destination.y + dy))) {
             throw new IllegalArgumentException("The cut would go outside the panel.");
         }
         cut.translate(dx, dy);
@@ -184,10 +184,10 @@ public class Panel implements Serializable {
     }
 
     /** Resizes a cut that has a width and a height (rectangle, border). */
-    public void resizeCut(UUID cutId, int newWidth, int newHeight) {
+    public void resizeCut(UUID cutId, double newWidth, double newHeight) {
         Cut cut = getCut(cutId);
-        Point oldOrigin = cut.getOrigin();
-        Point oldDestination = cut.getDestination();
+        Point2D.Double oldOrigin = cut.getOrigin();
+        Point2D.Double oldDestination = cut.getDestination();
         cut.resize(newWidth, newHeight);
         try {
             if (!isInside(cut.getOrigin()) || !isInside(cut.getDestination())) {
@@ -236,7 +236,7 @@ public class Panel implements Serializable {
     }
 
     /** The first cut under the point (with the selection tolerance). */
-    public Optional<Cut> findCutAt(Point point) {
+    public Optional<Cut> findCutAt(Point2D.Double point) {
         return cuts.stream().filter(cut -> cut.contains(point)).findFirst();
     }
 
@@ -250,8 +250,11 @@ public class Panel implements Serializable {
         return findCut(cutId).orElseThrow(() -> new IllegalArgumentException("Unknown cut."));
     }
 
-    private boolean isInside(Point point) {
-        return point.x >= 0 && point.x <= width && point.y >= 0 && point.y <= length;
+    /** Margin for rounding errors on decimal positions (one micrometre). */
+    private static final double EPSILON = 1e-3;
+
+    private boolean isInside(Point2D.Double point) {
+        return point.x >= -EPSILON && point.x <= width + EPSILON && point.y >= -EPSILON && point.y <= length + EPSILON;
     }
 
     public UUID getId() {

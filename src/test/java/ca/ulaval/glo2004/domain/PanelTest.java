@@ -5,7 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.awt.Point;
+import java.awt.geom.Point2D;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -41,8 +41,8 @@ class PanelTest {
         panel.addVerticalCut(300, null);
         panel.addHorizontalCut(400, null);
         assertEquals(2, panel.getCuts().size());
-        assertEquals(new Point(300, 1200), cut(0).getDestination());
-        assertEquals(new Point(900, 400), cut(1).getDestination());
+        assertEquals(new Point2D.Double(300, 1200), cut(0).getDestination());
+        assertEquals(new Point2D.Double(900, 400), cut(1).getDestination());
         assertThrows(IllegalArgumentException.class, () -> panel.addVerticalCut(950, null));
     }
 
@@ -63,8 +63,8 @@ class PanelTest {
 
     @Test
     void rectangleCanBeDrawnInAnyDirection() {
-        panel.addRectangularCut(new Point(300, 300), new Point(100, 200), null);
-        assertEquals(new Point(100, 200), cut(0).getOrigin());
+        panel.addRectangularCut(new Point2D.Double(300, 300), new Point2D.Double(100, 200), null);
+        assertEquals(new Point2D.Double(100, 200), cut(0).getOrigin());
         assertEquals(200, cut(0).getWidth());
         assertEquals(100, cut(0).getHeight());
     }
@@ -73,45 +73,45 @@ class PanelTest {
     void movingACut() {
         panel.addVerticalCut(300, null);
         Cut cut = cut(0);
-        panel.moveCut(cut.getId(), new Point(500, 0));
+        panel.moveCut(cut.getId(), new Point2D.Double(500, 0));
         assertEquals(500, cut.getOrigin().x);
-        assertTrue(cut.contains(new Point(500, 600)));
-        assertFalse(cut.contains(new Point(300, 600)));
-        assertThrows(IllegalArgumentException.class, () -> panel.moveCut(cut.getId(), new Point(1000, 0)));
+        assertTrue(cut.contains(new Point2D.Double(500, 600)));
+        assertFalse(cut.contains(new Point2D.Double(300, 600)));
+        assertThrows(IllegalArgumentException.class, () -> panel.moveCut(cut.getId(), new Point2D.Double(1000, 0)));
     }
 
     @Test
     void movingAnLCut() {
-        panel.addLCut(new Point(100, 100), new Point(300, 400), null);
+        panel.addLCut(new Point2D.Double(100, 100), new Point2D.Double(300, 400), null);
         Cut l = cut(0);
-        panel.moveCut(l.getId(), new Point(200, 150));
-        assertEquals(new Point(400, 450), l.getDestination());
-        assertThrows(IllegalArgumentException.class, () -> panel.moveCut(l.getId(), new Point(800, 100)));
+        panel.moveCut(l.getId(), new Point2D.Double(200, 150));
+        assertEquals(new Point2D.Double(400, 450), l.getDestination());
+        assertThrows(IllegalArgumentException.class, () -> panel.moveCut(l.getId(), new Point2D.Double(800, 100)));
     }
 
     @Test
     void aBorderCannotBeMoved() {
         panel.addBorderCut(800, 1000, null);
-        assertThrows(IllegalArgumentException.class, () -> panel.moveCut(cut(0).getId(), new Point(0, 0)));
+        assertThrows(IllegalArgumentException.class, () -> panel.moveCut(cut(0).getId(), new Point2D.Double(0, 0)));
     }
 
     @Test
     void resizingARectangle() {
-        panel.addRectangularCut(new Point(100, 100), new Point(300, 200), null);
+        panel.addRectangularCut(new Point2D.Double(100, 100), new Point2D.Double(300, 200), null);
         Cut r = cut(0);
         panel.resizeCut(r.getId(), 400, 150);
-        assertEquals(new Point(500, 250), r.getDestination());
+        assertEquals(new Point2D.Double(500, 250), r.getDestination());
         assertThrows(IllegalArgumentException.class, () -> panel.resizeCut(r.getId(), 900, 150));
-        assertEquals(new Point(500, 250), r.getDestination(), "a refused resize leaves the cut unchanged");
+        assertEquals(new Point2D.Double(500, 250), r.getDestination(), "a refused resize leaves the cut unchanged");
     }
 
     @Test
     void borderIsCentredAndResizable() {
         panel.addBorderCut(800, 1000, null);
         BorderCut b = (BorderCut) cut(0);
-        assertEquals(new Point(50, 100), b.getOrigin());
+        assertEquals(new Point2D.Double(50, 100), b.getOrigin());
         panel.resizeCut(b.getId(), 600, 800);
-        assertEquals(new Point(150, 200), b.getOrigin());
+        assertEquals(new Point2D.Double(150, 200), b.getOrigin());
         assertThrows(IllegalArgumentException.class, () -> panel.resizeCut(b.getId(), 1000, 800));
     }
 
@@ -168,11 +168,11 @@ class PanelTest {
 
     @Test
     void lCutDrawnBackwardsHasPositiveSizes() {
-        panel.addLCut(new Point(500, 500), new Point(400, 300), null);
+        panel.addLCut(new Point2D.Double(500, 500), new Point2D.Double(400, 300), null);
         assertEquals(100, cut(0).getWidth());
         assertEquals(200, cut(0).getHeight());
-        assertTrue(cut(0).contains(new Point(450, 300)), "horizontal arm, drawn towards the left");
-        assertTrue(cut(0).contains(new Point(400, 400)), "vertical arm, drawn upwards");
+        assertTrue(cut(0).contains(new Point2D.Double(450, 300)), "horizontal arm, drawn towards the left");
+        assertTrue(cut(0).contains(new Point2D.Double(400, 400)), "vertical arm, drawn upwards");
     }
 
     @Test
@@ -180,14 +180,14 @@ class PanelTest {
         panel.addVerticalCut(300, null);
         assertThrows(IllegalArgumentException.class, () -> panel.addVerticalCut(300, null));
         panel.addVerticalCut(400, null);
-        assertThrows(IllegalArgumentException.class, () -> panel.moveCut(cut(1).getId(), new Point(300, 0)));
+        assertThrows(IllegalArgumentException.class, () -> panel.moveCut(cut(1).getId(), new Point2D.Double(300, 0)));
         assertEquals(400, cut(1).getOrigin().x, "a refused move leaves the cut where it was");
     }
 
     @Test
     void aRectangleSmallerThanTheToolIsRefused() {
-        assertThrows(IllegalArgumentException.class, () -> panel.addRectangularCut(new Point(10, 10), new Point(12, 12), null));
-        panel.addRectangularCut(new Point(10, 10), new Point(30, 30), null);
+        assertThrows(IllegalArgumentException.class, () -> panel.addRectangularCut(new Point2D.Double(10, 10), new Point2D.Double(12, 12), null));
+        panel.addRectangularCut(new Point2D.Double(10, 10), new Point2D.Double(30, 30), null);
         assertThrows(IllegalArgumentException.class, () -> panel.resizeCut(cut(0).getId(), 3, 20));
         assertEquals(20, cut(0).getWidth());
         assertThrows(IllegalArgumentException.class, () -> panel.setToolWidth(saw.getId(), 25), "tool wider than its cut");

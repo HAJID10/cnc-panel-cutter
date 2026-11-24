@@ -1,7 +1,7 @@
 package ca.ulaval.glo2004.domain;
 
 import java.awt.BasicStroke;
-import java.awt.Point;
+import java.awt.geom.Point2D;
 import java.awt.Shape;
 import java.io.Serializable;
 import java.util.UUID;
@@ -20,22 +20,22 @@ public abstract class Cut implements Serializable {
     public static final double SELECTION_TOLERANCE = 3.0;
 
     protected UUID id;
-    protected Point origin;
-    protected Point destination;
+    protected Point2D.Double origin;
+    protected Point2D.Double destination;
     protected Tool tool;
     protected double depth;
     protected boolean selected;
 
-    protected Cut(Point origin, Point destination, Tool tool) {
+    protected Cut(Point2D.Double origin, Point2D.Double destination, Tool tool) {
         if (origin == null || destination == null) {
             throw new IllegalArgumentException("A cut needs a start and an end point.");
         }
         if (tool == null) {
             throw new IllegalArgumentException("A cut needs a tool.");
         }
-        // Defensive copies: java.awt.Point is mutable and must not be shared with the caller.
-        this.origin = new Point(origin);
-        this.destination = new Point(destination);
+        // Defensive copies: java.awt.Point2D.Double is mutable and must not be shared with the caller.
+        this.origin = copy(origin);
+        this.destination = copy(destination);
         this.tool = tool;
         this.depth = tool.getWidth();
         this.id = UUID.randomUUID();
@@ -46,8 +46,8 @@ public abstract class Cut implements Serializable {
     /** Line followed by the centre of the tool. */
     protected abstract Shape path();
 
-    /** Point used to describe where the cut is (shown to the user). */
-    public abstract Point referencePoint();
+    /** Point2D.Double used to describe where the cut is (shown to the user). */
+    public abstract Point2D.Double referencePoint();
 
     /** True if clicking inside the closed path also selects the cut (rectangular cuts). */
     protected boolean selectableInside() {
@@ -63,12 +63,12 @@ public abstract class Cut implements Serializable {
      * Adjusts a requested new origin to what this cut allows. A vertical cut, for example, can only slide
      * sideways, so it keeps its own y.
      */
-    protected Point constrainOrigin(Point requested) {
-        return new Point(requested);
+    protected Point2D.Double constrainOrigin(Point2D.Double requested) {
+        return copy(requested);
     }
 
     /** Changes the size of the cut. Only cuts that have a width and a height support it. */
-    public void resize(int newWidth, int newHeight) {
+    public void resize(double newWidth, double newHeight) {
         throw new IllegalArgumentException("This type of cut can't be resized.");
     }
 
@@ -86,12 +86,12 @@ public abstract class Cut implements Serializable {
     }
 
     /** Horizontal size, always positive (an L can be drawn towards the left). */
-    public int getWidth() {
+    public double getWidth() {
         return Math.abs(destination.x - origin.x);
     }
 
     /** Vertical size, always positive (an L can be drawn upwards). */
-    public int getHeight() {
+    public double getHeight() {
         return Math.abs(destination.y - origin.y);
     }
 
@@ -105,23 +105,23 @@ public abstract class Cut implements Serializable {
     }
 
     /** True if the point touches the cut, with a small tolerance to make clicking easier. */
-    public boolean contains(Point p) {
+    public boolean contains(Point2D.Double p) {
         return isNear(p, SELECTION_TOLERANCE);
     }
 
     /** True if the point is less than {@code distance} mm away from the cut area. */
-    public boolean isNear(Point p, double distance) {
+    public boolean isNear(Point2D.Double p, double distance) {
         return thicken(tool.getWidth() + 2 * distance).contains(p) || (selectableInside() && path().contains(p));
     }
 
     /** Moves the cut by (dx, dy) without changing its shape. */
-    public void translate(int dx, int dy) {
-        origin.translate(dx, dy);
-        destination.translate(dx, dy);
+    public void translate(double dx, double dy) {
+        origin.setLocation(origin.x + dx, origin.y + dy);
+        destination.setLocation(destination.x + dx, destination.y + dy);
     }
 
     /** Where the origin would land if the cut were moved to {@code requested} (see {@link #constrainOrigin}). */
-    public Point movedOrigin(Point requested) {
+    public Point2D.Double movedOrigin(Point2D.Double requested) {
         return constrainOrigin(requested);
     }
 
@@ -136,12 +136,17 @@ public abstract class Cut implements Serializable {
         this.id = id;
     }
 
-    public Point getOrigin() {
-        return new Point(origin);
+    /** Copy of a point: Point2D.Double is mutable and must not be shared. */
+    public static Point2D.Double copy(Point2D.Double p) {
+        return new Point2D.Double(p.x, p.y);
     }
 
-    public Point getDestination() {
-        return new Point(destination);
+    public Point2D.Double getOrigin() {
+        return copy(origin);
+    }
+
+    public Point2D.Double getDestination() {
+        return copy(destination);
     }
 
     public double getDepth() {

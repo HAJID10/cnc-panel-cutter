@@ -4,6 +4,7 @@ import javax.swing.JTextField;
 
 import ca.ulaval.glo2004.controller.CncController;
 import ca.ulaval.glo2004.dto.CutDto;
+import ca.ulaval.glo2004.gui.Units;
 
 /** Border cut: the final size of the panel, always centred. */
 public class BorderCutPanel extends CutEditorPanel {
@@ -25,8 +26,8 @@ public class BorderCutPanel extends CutEditorPanel {
 
     @Override
     protected void fillFields(CutDto cut) {
-        width.setText(String.valueOf(cut.width()));
-        length.setText(String.valueOf(cut.height()));
+        width.setText(Units.format(cut.width()));
+        length.setText(Units.format(cut.height()));
     }
 
     @Override

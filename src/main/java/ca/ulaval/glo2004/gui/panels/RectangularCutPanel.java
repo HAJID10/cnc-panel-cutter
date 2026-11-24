@@ -1,11 +1,12 @@
 package ca.ulaval.glo2004.gui.panels;
 
-import java.awt.Point;
+import java.awt.geom.Point2D;
 
 import javax.swing.JTextField;
 
 import ca.ulaval.glo2004.controller.CncController;
 import ca.ulaval.glo2004.dto.CutDto;
+import ca.ulaval.glo2004.gui.Units;
 
 /** Rectangular cut given by its top-left corner and its size. */
 public class RectangularCutPanel extends CutEditorPanel {
@@ -33,21 +34,21 @@ public class RectangularCutPanel extends CutEditorPanel {
 
     @Override
     protected void fillFields(CutDto cut) {
-        x.setText(String.valueOf(cut.origin().x));
-        y.setText(String.valueOf(cut.origin().y));
-        width.setText(String.valueOf(cut.width()));
-        height.setText(String.valueOf(cut.height()));
+        x.setText(Units.format(cut.origin().x));
+        y.setText(Units.format(cut.origin().y));
+        width.setText(Units.format(cut.width()));
+        height.setText(Units.format(cut.height()));
     }
 
     @Override
     protected void create() {
-        Point topLeft = new Point(readMm(x), readMm(y));
-        Point opposite = new Point(topLeft.x + readMm(width), topLeft.y + readMm(height));
+        Point2D.Double topLeft = new Point2D.Double(readMm(x), readMm(y));
+        Point2D.Double opposite = new Point2D.Double(topLeft.x + readMm(width), topLeft.y + readMm(height));
         controller.addRectangularCut(topLeft, opposite, selectedToolId());
     }
 
     @Override
     protected void update(CutDto cut) {
-        controller.editCut(cut.id(), new Point(readMm(x), readMm(y)), readMm(width), readMm(height), selectedToolId());
+        controller.editCut(cut.id(), new Point2D.Double(readMm(x), readMm(y)), readMm(width), readMm(height), selectedToolId());
     }
 }

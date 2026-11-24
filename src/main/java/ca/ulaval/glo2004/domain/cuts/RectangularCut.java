@@ -1,6 +1,6 @@
 package ca.ulaval.glo2004.domain.cuts;
 
-import java.awt.Point;
+import java.awt.geom.Point2D;
 import java.awt.Shape;
 import java.awt.geom.Rectangle2D;
 
@@ -14,12 +14,12 @@ import ca.ulaval.glo2004.domain.Tool;
  */
 public class RectangularCut extends Cut {
 
-    public RectangularCut(Point topLeft, int width, int height, Tool tool) {
-        super(topLeft, new Point(topLeft.x + width, topLeft.y + height), tool);
+    public RectangularCut(Point2D.Double topLeft, double width, double height, Tool tool) {
+        super(topLeft, new Point2D.Double(topLeft.x + width, topLeft.y + height), tool);
         checkSize(width, height);
     }
 
-    private static void checkSize(int width, int height) {
+    private static void checkSize(double width, double height) {
         if (width <= 0 || height <= 0) {
             throw new IllegalArgumentException("The width and height must be positive.");
         }
@@ -53,13 +53,13 @@ public class RectangularCut extends Cut {
 
     /** Keeps the top-left corner and moves the opposite one. */
     @Override
-    public void resize(int newWidth, int newHeight) {
+    public void resize(double newWidth, double newHeight) {
         checkSize(newWidth, newHeight);
-        destination = new Point(origin.x + newWidth, origin.y + newHeight);
+        destination = new Point2D.Double(origin.x + newWidth, origin.y + newHeight);
     }
 
     @Override
-    public Point referencePoint() {
-        return new Point(origin);
+    public Point2D.Double referencePoint() {
+        return copy(origin);
     }
 }

@@ -1,6 +1,6 @@
 package ca.ulaval.glo2004.gui.panels;
 
-import java.awt.Point;
+import java.awt.geom.Point2D;
 import java.util.List;
 
 import javax.swing.JComboBox;
@@ -9,6 +9,7 @@ import javax.swing.JTextField;
 import ca.ulaval.glo2004.controller.CncController;
 import ca.ulaval.glo2004.domain.CutType;
 import ca.ulaval.glo2004.dto.CutDto;
+import ca.ulaval.glo2004.gui.Units;
 import ca.ulaval.glo2004.dto.PanelDto;
 
 /**
@@ -68,25 +69,25 @@ public class StraightCutPanel extends CutEditorPanel {
         List<CutDto> cuts = controller.getPanel().cuts();
         for (CutDto cut : cuts) {
             if (cut.type() == type && (exclude == null || !cut.id().equals(exclude.id()))) {
-                String label = vertical() ? "x = " + cut.origin().x + " mm" : "y = " + cut.origin().y + " mm";
+                String label = (vertical() ? "x = " : "y = ") + Units.withUnit(vertical() ? cut.origin().x : cut.origin().y);
                 otherCut.addItem(new CutChoice(cut, label));
             }
         }
     }
 
     /** Position (x for vertical, y for horizontal) of the cut from the form. */
-    private int position() {
-        int d = readMm(distance);
+    private double position() {
+        double d = readMm(distance);
         PanelDto panel = controller.getPanel();
         return switch (reference.getSelectedIndex()) {
             case 0 -> d;
-            case 1 -> (int) Math.round((vertical() ? panel.width() : panel.length()) - d);
+            case 1 -> (vertical() ? panel.width() : panel.length()) - d;
             default -> {
                 CutChoice choice = (CutChoice) otherCut.getSelectedItem();
                 if (choice == null) {
                     throw new IllegalArgumentException("Choose an existing cut first.");
                 }
-                int base = vertical() ? choice.cut().origin().x : choice.cut().origin().y;
+                double base = vertical() ? choice.cut().origin().x : choice.cut().origin().y;
                 yield side.getSelectedIndex() == 0 ? base - d : base + d;
             }
         };
@@ -103,7 +104,7 @@ public class StraightCutPanel extends CutEditorPanel {
     protected void fillFields(CutDto cut) {
         reloadCuts(cut);
         reference.setSelectedIndex(0);
-        distance.setText(String.valueOf(vertical() ? cut.origin().x : cut.origin().y));
+        distance.setText(Units.format(vertical() ? cut.origin().x : cut.origin().y));
     }
 
     @Override
@@ -117,8 +118,8 @@ public class StraightCutPanel extends CutEditorPanel {
 
     @Override
     protected void update(CutDto cut) {
-        int p = position();
-        Point newOrigin = vertical() ? new Point(p, cut.origin().y) : new Point(cut.origin().x, p);
+        double p = position();
+        Point2D.Double newOrigin = vertical() ? new Point2D.Double(p, cut.origin().y) : new Point2D.Double(cut.origin().x, p);
         controller.editCut(cut.id(), newOrigin, null, null, selectedToolId());
     }
 }

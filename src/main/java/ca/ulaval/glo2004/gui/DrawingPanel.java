@@ -5,6 +5,7 @@ import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Point;
+import java.awt.geom.Point2D;
 import java.awt.RenderingHints;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -38,8 +39,8 @@ public class DrawingPanel extends JPanel {
     private final PanelRenderer renderer = new PanelRenderer();
 
     private Mode mode = Mode.NONE;
-    private Point pendingPoint;   // first click of a two-click cut (rectangle, L)
-    private Point hoverPoint;     // mouse position in mm, for the two-click preview
+    private Point2D.Double pendingPoint;   // first click of a two-click cut (rectangle, L)
+    private Point2D.Double hoverPoint;     // mouse position in mm, for the two-click preview
 
     // View: screen = model * scale + offset
     private double scale = 1.0;
@@ -48,11 +49,11 @@ public class DrawingPanel extends JPanel {
     private Point panStart;       // screen point where panning started
 
     // Dragging a selected cut
-    private Point dragStart;      // model point where the drag started
-    private Point dragOrigin;     // origin of the cut when the drag started
+    private Point2D.Double dragStart;      // model point where the drag started
+    private Point2D.Double dragOrigin;     // origin of the cut when the drag started
     private CutType dragType;
-    private int dragDx;
-    private int dragDy;
+    private double dragDx;
+    private double dragDy;
 
     private boolean showGrid;
     private int gridSpacing = 20;
@@ -101,7 +102,7 @@ public class DrawingPanel extends JPanel {
     // --- Mouse handling ---
 
     private void onPress(MouseEvent e) {
-        Point p = toModel(e.getPoint());
+        Point2D.Double p = toModel(e.getPoint());
         switch (mode) {
             case SELECT -> {
                 var cut = controller.findCutAt(p);
@@ -125,7 +126,7 @@ public class DrawingPanel extends JPanel {
                     pendingPoint = p;
                     repaint();
                 } else {
-                    Point first = pendingPoint;
+                    Point2D.Double first = pendingPoint;
                     pendingPoint = null;
                     if (mode == Mode.RECTANGULAR) {
                         run(() -> controller.addRectangularCut(first, p, null));
@@ -140,12 +141,12 @@ public class DrawingPanel extends JPanel {
 
     private void onDrag(MouseEvent e) {
         if (dragStart != null) {
-            Point p = toModel(e.getPoint());
-            int dx = dragType == CutType.HORIZONTAL ? 0 : p.x - dragStart.x;
-            int dy = dragType == CutType.VERTICAL ? 0 : p.y - dragStart.y;
+            Point2D.Double p = toModel(e.getPoint());
+            double dx = dragType == CutType.HORIZONTAL ? 0 : p.x - dragStart.x;
+            double dy = dragType == CutType.VERTICAL ? 0 : p.y - dragStart.y;
             if (showGrid) {
                 // Snap the new origin (not the mouse) to the grid.
-                Point snapped = snap(new Point(dragOrigin.x + dx, dragOrigin.y + dy));
+                Point2D.Double snapped = snap(new Point2D.Double(dragOrigin.x + dx, dragOrigin.y + dy));
                 dx = dragType == CutType.HORIZONTAL ? 0 : snapped.x - dragOrigin.x;
                 dy = dragType == CutType.VERTICAL ? 0 : snapped.y - dragOrigin.y;
             }
@@ -164,7 +165,7 @@ public class DrawingPanel extends JPanel {
     private void onRelease() {
         if (dragStart != null && (dragDx != 0 || dragDy != 0)) {
             var selected = controller.getSelectedCut();
-            Point newOrigin = new Point(dragOrigin.x + dragDx, dragOrigin.y + dragDy);
+            Point2D.Double newOrigin = new Point2D.Double(dragOrigin.x + dragDx, dragOrigin.y + dragDy);
             selected.ifPresent(cut -> run(() -> controller.moveCut(cut.id(), newOrigin)));
         }
         dragStart = null;
@@ -186,16 +187,26 @@ public class DrawingPanel extends JPanel {
         repaint();
     }
 
-    private Point snap(Point p) {
-        return new Point(Math.round(p.x / (float) gridSpacing) * gridSpacing,
-                Math.round(p.y / (float) gridSpacing) * gridSpacing);
+    private Point2D.Double snap(Point2D.Double p) {
+        return new Point2D.Double(Math.round(p.x / gridSpacing) * (double) gridSpacing,
+                Math.round(p.y / gridSpacing) * (double) gridSpacing);
     }
 
     // --- View ---
 
-    /** Screen pixels to panel millimetres. */
-    private Point toModel(Point screen) {
-        return new Point((int) Math.round((screen.x - offsetX) / scale), (int) Math.round((screen.y - offsetY) / scale));
+    /**
+     * Screen pixels to panel millimetres, rounded to {@link #CLICK_STEP}: a mouse click can't be more precise than
+     * that, and round numbers are easier to read. Exact values can be typed in the side panel.
+     */
+    private Point2D.Double toModel(Point screen) {
+        return new Point2D.Double(round((screen.x - offsetX) / scale), round((screen.y - offsetY) / scale));
+    }
+
+    /** Precision of a mouse click, in mm. */
+    private static final double CLICK_STEP = 0.5;
+
+    private static double round(double mm) {
+        return Math.round(mm / CLICK_STEP) * CLICK_STEP;
     }
 
     private void zoom(Point screenPoint, double factor) {
@@ -258,14 +269,19 @@ public class DrawingPanel extends JPanel {
     /** Tooltip text for a cut. */
     static String describe(CutDto cut) {
         String size = switch (cut.type()) {
-            case VERTICAL -> "Length: " + cut.height() + " mm";
-            case HORIZONTAL -> "Length: " + cut.width() + " mm";
-            case RECTANGULAR -> "Size: " + cut.width() + " × " + cut.height() + " mm";
-            case BORDER -> "Final size: " + cut.width() + " × " + cut.height() + " mm";
-            case L -> "Corner: (" + cut.destination().x + ", " + cut.destination().y + ")";
+            case VERTICAL -> "Length: " + Units.withUnit(cut.height());
+            case HORIZONTAL -> "Length: " + Units.withUnit(cut.width());
+            case RECTANGULAR -> "Size: " + Units.format(cut.width()) + " × " + Units.withUnit(cut.height());
+            case BORDER -> "Final size: " + Units.format(cut.width()) + " × " + Units.withUnit(cut.height());
+            case L -> "Corner: " + point(cut.destination());
         };
-        return "<html>" + cut.type() + "<br>Start: (" + cut.origin().x + ", " + cut.origin().y + ")<br>" + size
+        return "<html>" + cut.type() + "<br>Start: " + point(cut.origin()) + "<br>" + size
                 + "<br>Tool: " + cut.tool().name() + "</html>";
+    }
+
+    /** "(12.5, 30)" */
+    static String point(Point2D.Double p) {
+        return "(" + Units.format(p.x) + ", " + Units.format(p.y) + ")";
     }
 
     // --- Settings used by the main window ---

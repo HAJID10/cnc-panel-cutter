@@ -6,3 +6,6 @@ out/
 .DS_Store
 *.cnc
 *.nc
+
+# graphify knowledge-graph output (local, rebuilt by git hooks)
+graphify-out/

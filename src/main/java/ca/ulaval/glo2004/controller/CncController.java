@@ -3,9 +3,15 @@ package ca.ulaval.glo2004.controller;
 import java.awt.geom.Point2D;
 import java.awt.Shape;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import ca.ulaval.glo2004.domain.Cut;
 import ca.ulaval.glo2004.domain.Panel;
 import ca.ulaval.glo2004.dto.CutDto;
 import ca.ulaval.glo2004.dto.PanelDto;
@@ -14,6 +20,7 @@ import ca.ulaval.glo2004.dto.ZoneDto;
 import ca.ulaval.glo2004.dto.mappers.CutMapper;
 import ca.ulaval.glo2004.dto.mappers.PanelMapper;
 import ca.ulaval.glo2004.dto.mappers.ToolMapper;
+import ca.ulaval.glo2004.infra.GCodeWriter;
 import ca.ulaval.glo2004.infra.History;
 import ca.ulaval.glo2004.infra.ProjectFile;
 
@@ -27,6 +34,7 @@ public class CncController {
     private final PanelMapper panelMapper = new PanelMapper(toolMapper, cutMapper);
     private final History history = new History();
     private final ProjectFile projectFile = new ProjectFile();
+    private final GCodeWriter gCodeWriter = new GCodeWriter();
     private Panel panel;
 
     public CncController(PanelDto initialPanel) {
@@ -79,6 +87,29 @@ public class CncController {
 
     public void load(String path) throws IOException {
         panel = panelMapper.toDomain(projectFile.load(path));
+    }
+
+    /**
+     * The G-code program for the whole panel. Refused while a cut touches a forbidden zone: the machine would
+     * hit a clamp.
+     */
+    public String gCode() {
+        long conflicts = panel.getCuts().stream().filter(panel::isInForbiddenZone).count();
+        if (conflicts > 0) {
+            throw new IllegalArgumentException(conflicts + " cut(s) touch a forbidden zone (shown in red). "
+                    + "Fix them before exporting.");
+        }
+        List<GCodeWriter.Job> jobs = new ArrayList<>();
+        int number = 1;
+        for (Cut cut : panel.getCuts()) {
+            jobs.add(new GCodeWriter.Job("Cut " + number++ + ": " + cut.type(), cut.getTool().getName(),
+                    cut.getTool().getWidth(), cut.getDepth(), cut.pathPoints()));
+        }
+        return gCodeWriter.write(panel.getWidth(), panel.getLength(), panel.getThickness(), jobs);
+    }
+
+    public void exportGCode(String path) throws IOException {
+        Files.writeString(Path.of(path), gCode(), StandardCharsets.US_ASCII);
     }
 
     // --- Cuts ---

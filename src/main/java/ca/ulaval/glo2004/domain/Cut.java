@@ -1,7 +1,10 @@
 package ca.ulaval.glo2004.domain;
 
 import java.awt.BasicStroke;
+import java.awt.geom.PathIterator;
 import java.awt.geom.Point2D;
+import java.util.ArrayList;
+import java.util.List;
 import java.awt.Shape;
 import java.io.Serializable;
 import java.util.UUID;
@@ -98,6 +101,32 @@ public abstract class Cut implements Serializable {
     /** Vertical size, always positive (an L can be drawn upwards). */
     public double getHeight() {
         return Math.abs(destination.y - origin.y);
+    }
+
+    /**
+     * The tool path as a list of points to visit in order (a closed shape ends on its first point). Read from
+     * {@link #path()}, so it always matches what is drawn and checked.
+     */
+    public List<Point2D.Double> pathPoints() {
+        List<Point2D.Double> points = new ArrayList<>();
+        Point2D.Double start = null;
+        double[] c = new double[6];
+        for (PathIterator it = path().getPathIterator(null); !it.isDone(); it.next()) {
+            switch (it.currentSegment(c)) {
+                case PathIterator.SEG_MOVETO -> {
+                    start = new Point2D.Double(c[0], c[1]);
+                    points.add(start);
+                }
+                case PathIterator.SEG_LINETO -> points.add(new Point2D.Double(c[0], c[1]));
+                case PathIterator.SEG_CLOSE -> {
+                    if (start != null && !points.get(points.size() - 1).equals(start)) {
+                        points.add(copy(start));
+                    }
+                }
+                default -> throw new IllegalStateException("Cut paths are made of straight lines only.");
+            }
+        }
+        return points;
     }
 
     /** Material removed by the tool. */

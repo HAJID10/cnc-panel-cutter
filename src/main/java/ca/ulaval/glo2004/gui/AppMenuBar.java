@@ -37,6 +37,8 @@ public class AppMenuBar extends JMenuBar {
         file.add(item("New panel…", KeyEvent.VK_N, this::newPanel));
         file.add(item("Open…", KeyEvent.VK_O, this::open));
         file.add(item("Save…", KeyEvent.VK_S, this::save));
+        file.addSeparator();
+        file.add(item("Export G-code…", KeyEvent.VK_E, this::exportGCode));
         add(file);
 
         JMenu edit = new JMenu("Edit");
@@ -110,6 +112,32 @@ public class AppMenuBar extends JMenuBar {
             window.panelReplaced();
         } catch (IOException | IllegalArgumentException e) {
             error("Could not open the project: " + e.getMessage());
+        }
+    }
+
+    /** Writes the G-code program (.nc) for the CNC machine. */
+    private void exportGCode() {
+        JFileChooser chooser = new JFileChooser();
+        chooser.setFileFilter(new FileNameExtensionFilter("G-code (*.nc)", "nc"));
+        if (chooser.showSaveDialog(window) != JFileChooser.APPROVE_OPTION) {
+            return;
+        }
+        String path = chooser.getSelectedFile().getPath();
+        if (!path.toLowerCase().endsWith(".nc")) {
+            path += ".nc";
+        }
+        if (new File(path).exists() && JOptionPane.showConfirmDialog(window, "Replace the existing file?", "Export",
+                JOptionPane.YES_NO_OPTION) != JOptionPane.YES_OPTION) {
+            return;
+        }
+        try {
+            controller.exportGCode(path);
+            JOptionPane.showMessageDialog(window, "G-code written to " + path + ".\n"
+                    + "Check the feed rates and the origin for your machine before running it.");
+        } catch (IOException e) {
+            error("Could not write the file: " + e.getMessage());
+        } catch (IllegalArgumentException e) {
+            error(e.getMessage());
         }
     }
 

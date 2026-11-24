@@ -32,14 +32,14 @@
                 <version>3.5.2</version>
             </plugin>
             <plugin>
-                <!-- Rend le .jar exécutable : java -jar target/cnc-panel-cutter.jar -->
+                <!-- Makes the .jar runnable: java -jar target/cnc-panel-cutter.jar -->
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
                 <version>3.4.2</version>
                 <configuration>
                     <archive>
                         <manifest>
-                            <mainClass>ca.ulaval.glo2004.GUI.MainWindow</mainClass>
+                            <mainClass>ca.ulaval.glo2004.gui.MainWindow</mainClass>
                         </manifest>
                     </archive>
                 </configuration>

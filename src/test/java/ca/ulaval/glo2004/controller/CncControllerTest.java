@@ -139,7 +139,7 @@ class CncControllerTest {
         controller.addVerticalCut(100, null);
         controller.addLCut(new Point2D.Double(100, 100), new Point2D.Double(300, 300), null);
         List<CutDto> before = cuts();
-        String file = folder.resolve("panel.cnc").toString();
+        String file = folder.resolve("panel.json").toString();
         controller.save(file);
 
         controller.newPanel(new PanelDto(UUID.randomUUID(), 500, 500, 10, new ArrayList<>(), List.of(saw)));

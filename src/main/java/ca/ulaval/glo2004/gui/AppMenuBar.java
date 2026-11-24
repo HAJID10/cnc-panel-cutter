@@ -25,7 +25,7 @@ import ca.ulaval.glo2004.dto.PanelDto;
 
 /** File and Edit menus. */
 public class AppMenuBar extends JMenuBar {
-    private static final String EXTENSION = "cnc";
+    private static final String EXTENSION = "json";
 
     private final MainWindow window;
     private final CncController controller;
@@ -62,7 +62,7 @@ public class AppMenuBar extends JMenuBar {
 
     private JFileChooser chooser() {
         JFileChooser chooser = new JFileChooser();
-        chooser.setFileFilter(new FileNameExtensionFilter("CNC projects (*." + EXTENSION + ")", EXTENSION));
+        chooser.setFileFilter(new FileNameExtensionFilter("CNC Panel Cutter projects (*." + EXTENSION + ")", EXTENSION));
         return chooser;
     }
 

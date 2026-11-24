@@ -13,8 +13,8 @@ public class BorderCutPanel extends CutEditorPanel {
 
     public BorderCutPanel(CncController controller, Runnable onChange) {
         super("Border cut", controller, onChange);
-        addRow("Final width (mm):", width);
-        addRow("Final length (mm):", length);
+        addRow(Units.label("Final width"), width);
+        addRow(Units.label("Final length"), length);
         setHint("The border is always centred on the panel.");
     }
 

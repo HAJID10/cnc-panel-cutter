@@ -8,7 +8,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.UUID;
 
-import javax.swing.JCheckBox;
 import javax.swing.JFileChooser;
 import javax.swing.JLabel;
 import javax.swing.JMenu;
@@ -23,7 +22,7 @@ import javax.swing.filechooser.FileNameExtensionFilter;
 import ca.ulaval.glo2004.controller.CncController;
 import ca.ulaval.glo2004.dto.PanelDto;
 
-/** File and Edit menus. */
+/** File, Edit and View menus. */
 public class AppMenuBar extends JMenuBar {
     private static final String EXTENSION = "json";
 
@@ -50,6 +49,21 @@ public class AppMenuBar extends JMenuBar {
             window.refresh();
         }));
         add(edit);
+
+        // Display unit: the model and the files stay in millimetres.
+        JMenu view = new JMenu("View");
+        javax.swing.ButtonGroup units = new javax.swing.ButtonGroup();
+        for (Units.Unit unit : Units.Unit.values()) {
+            javax.swing.JRadioButtonMenuItem choice = new javax.swing.JRadioButtonMenuItem(
+                    unit == Units.Unit.MM ? "Millimetres" : "Inches", Units.current() == unit);
+            choice.addActionListener(e -> {
+                Units.setCurrent(unit);
+                window.unitsChanged();
+            });
+            units.add(choice);
+            view.add(choice);
+        }
+        add(view);
     }
 
     /** Menu item with a Ctrl+key shortcut. */
@@ -102,10 +116,9 @@ public class AppMenuBar extends JMenuBar {
     /** Asks for the dimensions of a new panel. The current tools are kept. */
     private void newPanel() {
         PanelDto current = controller.getPanel(); // the current panel gives the starting values
-        JTextField length = new JTextField(String.valueOf(current.length()));
-        JTextField width = new JTextField(String.valueOf(current.width()));
-        JTextField thickness = new JTextField(String.valueOf(current.thickness()));
-        JCheckBox metres = new JCheckBox("Values are in metres");
+        JTextField length = new JTextField(Units.format(current.length()));
+        JTextField width = new JTextField(Units.format(current.width()));
+        JTextField thickness = new JTextField(Units.format(current.thickness()));
 
         JPanel form = new JPanel(new GridLayout(0, 2, 8, 8));
         form.add(new JLabel("Length (top to bottom):"));
@@ -114,26 +127,20 @@ public class AppMenuBar extends JMenuBar {
         form.add(width);
         form.add(new JLabel("Thickness:"));
         form.add(thickness);
-        form.add(metres);
 
-        if (JOptionPane.showConfirmDialog(window, form, "New panel (mm)", JOptionPane.OK_CANCEL_OPTION,
+        if (JOptionPane.showConfirmDialog(window, form, "New panel (" + Units.symbol() + ")", JOptionPane.OK_CANCEL_OPTION,
                 JOptionPane.PLAIN_MESSAGE) != JOptionPane.OK_OPTION) {
             return;
         }
         try {
-            double factor = metres.isSelected() ? 1000 : 1;
-            controller.newPanel(new PanelDto(UUID.randomUUID(), parse(length) * factor, parse(width) * factor,
-                    parse(thickness) * factor, new ArrayList<>(), current.tools()));
+            controller.newPanel(new PanelDto(UUID.randomUUID(), Units.parse(length.getText()),
+                    Units.parse(width.getText()), Units.parse(thickness.getText()), new ArrayList<>(), current.tools()));
             window.panelReplaced();
         } catch (NumberFormatException e) {
             error("Please enter valid numbers.");
         } catch (IllegalArgumentException e) {
             error(e.getMessage());
         }
-    }
-
-    private static double parse(JTextField field) {
-        return Double.parseDouble(field.getText().trim().replace(',', '.'));
     }
 
     private void error(String message) {

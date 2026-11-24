@@ -54,6 +54,15 @@ public abstract class CutEditorPanel extends JPanel {
         content.add(bottom, BorderLayout.CENTER);
         add(content, BorderLayout.NORTH);
 
+        // Show tools with the current unit instead of ToolDto.toString().
+        toolBox.setRenderer(new javax.swing.DefaultListCellRenderer() {
+            @Override
+            public java.awt.Component getListCellRendererComponent(javax.swing.JList<?> list, Object value, int index,
+                                                                   boolean selected, boolean focus) {
+                Object text = value instanceof ToolDto tool ? Units.describe(tool) : value;
+                return super.getListCellRendererComponent(list, text, index, selected, focus);
+            }
+        });
         actionButton.addActionListener(e -> onAction());
     }
 

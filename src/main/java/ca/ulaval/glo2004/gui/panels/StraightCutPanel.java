@@ -46,7 +46,7 @@ public class StraightCutPanel extends CutEditorPanel {
         addRow("Measured from:", reference);
         addRow("Existing cut:", otherCut);
         addRow("Side:", side);
-        addRow("Distance (mm):", distance);
+        addRow(Units.label("Distance"), distance);
         setHint("Or click on the panel to place the cut.");
 
         reference.addActionListener(e -> updateEnabled());

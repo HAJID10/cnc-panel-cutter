@@ -56,7 +56,7 @@ public class DrawingPanel extends JPanel {
     private double dragDy;
 
     private boolean showGrid;
-    private int gridSpacing = 20;
+    private double gridSpacing = 20; // mm
 
     public DrawingPanel(CncController controller, Runnable onChange) {
         this.controller = controller;
@@ -188,25 +188,23 @@ public class DrawingPanel extends JPanel {
     }
 
     private Point2D.Double snap(Point2D.Double p) {
-        return new Point2D.Double(Math.round(p.x / gridSpacing) * (double) gridSpacing,
-                Math.round(p.y / gridSpacing) * (double) gridSpacing);
+        return new Point2D.Double(Math.round(p.x / gridSpacing) * gridSpacing,
+                Math.round(p.y / gridSpacing) * gridSpacing);
     }
 
     // --- View ---
 
     /**
-     * Screen pixels to panel millimetres, rounded to {@link #CLICK_STEP}: a mouse click can't be more precise than
+     * Screen pixels to panel millimetres, rounded to the click step of the current unit (0.5 mm or 1/32 inch): a mouse click can't be more precise than
      * that, and round numbers are easier to read. Exact values can be typed in the side panel.
      */
     private Point2D.Double toModel(Point screen) {
         return new Point2D.Double(round((screen.x - offsetX) / scale), round((screen.y - offsetY) / scale));
     }
 
-    /** Precision of a mouse click, in mm. */
-    private static final double CLICK_STEP = 0.5;
-
     private static double round(double mm) {
-        return Math.round(mm / CLICK_STEP) * CLICK_STEP;
+        double step = Units.clickStepMm();
+        return Math.round(mm / step) * step;
     }
 
     private void zoom(Point screenPoint, double factor) {
@@ -310,12 +308,13 @@ public class DrawingPanel extends JPanel {
         repaint();
     }
 
-    public void setGridSpacing(int gridSpacing) {
+    /** @param gridSpacing in mm */
+    public void setGridSpacing(double gridSpacing) {
         this.gridSpacing = gridSpacing;
         repaint();
     }
 
-    public int getGridSpacing() {
+    public double getGridSpacing() {
         return gridSpacing;
     }
 }

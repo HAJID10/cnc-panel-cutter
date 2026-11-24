@@ -17,10 +17,10 @@ public class RectangularCutPanel extends CutEditorPanel {
 
     public RectangularCutPanel(CncController controller, Runnable onChange) {
         super("Rectangular cut", controller, onChange);
-        addRow("Left (mm):", x);
-        addRow("Top (mm):", y);
-        addRow("Width (mm):", width);
-        addRow("Height (mm):", height);
+        addRow(Units.label("Left"), x);
+        addRow(Units.label("Top"), y);
+        addRow(Units.label("Width"), width);
+        addRow(Units.label("Height"), height);
         setHint("Or click two opposite corners on the panel.");
     }
 

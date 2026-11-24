@@ -19,6 +19,7 @@ import javax.swing.ListSelectionModel;
 
 import ca.ulaval.glo2004.controller.CncController;
 import ca.ulaval.glo2004.dto.ToolDto;
+import ca.ulaval.glo2004.gui.Units;
 
 /** List of tools, with buttons to add, change and remove them. The default tool is used for new cuts. */
 public class ToolPanel extends JPanel {
@@ -40,7 +41,7 @@ public class ToolPanel extends JPanel {
             @Override
             public Component getListCellRendererComponent(JList<?> l, Object value, int index, boolean selected, boolean focus) {
                 ToolDto tool = (ToolDto) value;
-                String text = tool + (tool.isDefault() ? "  — default" : "");
+                String text = Units.describe(tool) + (tool.isDefault() ? "  — default" : "");
                 return super.getListCellRendererComponent(l, text, index, selected, focus);
             }
         });
@@ -54,7 +55,7 @@ public class ToolPanel extends JPanel {
         create.setBorder(BorderFactory.createTitledBorder("New tool"));
         create.add(new JLabel("Name:"));
         create.add(name);
-        create.add(new JLabel("Width (mm):"));
+        create.add(new JLabel(Units.label("Width")));
         create.add(width);
         create.add(add);
         add(create, BorderLayout.NORTH);
@@ -66,24 +67,20 @@ public class ToolPanel extends JPanel {
         add(buttons, BorderLayout.SOUTH);
 
         add.addActionListener(e -> run(() -> {
-            controller.addTool(new ToolDto(UUID.randomUUID(), name.getText(), parse(width.getText()), false));
+            controller.addTool(new ToolDto(UUID.randomUUID(), name.getText(), Units.parse(width.getText()), false));
             name.setText("");
             width.setText("");
         }));
         setDefault.addActionListener(e -> selected(tool -> controller.setDefaultTool(tool.id())));
         changeWidth.addActionListener(e -> selected(tool -> {
-            String answer = JOptionPane.showInputDialog(this, "New width for " + tool.name() + " (mm):", tool.width());
+            String answer = JOptionPane.showInputDialog(this, "New width for " + tool.name() + " (" + Units.symbol() + "):", Units.format(tool.width()));
             if (answer != null) {
-                controller.setToolWidth(tool.id(), parse(answer));
+                controller.setToolWidth(tool.id(), Units.parse(answer));
             }
         }));
         remove.addActionListener(e -> selected(tool -> controller.removeTool(tool.id())));
 
         refresh();
-    }
-
-    private static double parse(String text) {
-        return Double.parseDouble(text.trim().replace(',', '.'));
     }
 
     /** Runs an action on the selected tool. */

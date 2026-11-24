@@ -51,7 +51,7 @@ public class MainWindow extends JFrame {
     private final DrawingPanel drawingPanel;
     private final ToolPanel toolPanel;
     private final JPanel sidePanel = new JPanel(new BorderLayout());
-    private final JPanel defaultSide;
+    private JPanel defaultSide;
     private final JLabel status = new JLabel(" ");
     private final JLabel activeTool = new JLabel();
     private final Map<Mode, JToggleButton> modeButtons = new EnumMap<>(Mode.class);
@@ -72,16 +72,11 @@ public class MainWindow extends JFrame {
         drawingPanel = new DrawingPanel(controller, this::refresh);
         toolPanel = new ToolPanel(controller, this::refresh);
 
-        editors.put(CutType.VERTICAL, new StraightCutPanel(CutType.VERTICAL, controller, this::refresh));
-        editors.put(CutType.HORIZONTAL, new StraightCutPanel(CutType.HORIZONTAL, controller, this::refresh));
-        editors.put(CutType.RECTANGULAR, new RectangularCutPanel(controller, this::refresh));
-        editors.put(CutType.BORDER, new BorderCutPanel(controller, this::refresh));
-
         setJMenuBar(new AppMenuBar(this, controller));
         setLayout(new BorderLayout());
         add(drawingPanel, BorderLayout.CENTER);
 
-        defaultSide = createDefaultSide();
+        buildSidePanels();
         sidePanel.setPreferredSize(new Dimension(330, 0));
         sidePanel.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
         add(sidePanel, BorderLayout.EAST);
@@ -114,7 +109,15 @@ public class MainWindow extends JFrame {
     }
 
     public static void main(String[] args) {
-        SwingUtilities.invokeLater(() -> new MainWindow().setVisible(true));
+        SwingUtilities.invokeLater(() -> {
+            try {
+                // Native look (Windows, macOS, GTK); the default Metal look is used if it is not available.
+                javax.swing.UIManager.setLookAndFeel(javax.swing.UIManager.getSystemLookAndFeelClassName());
+            } catch (ReflectiveOperationException | javax.swing.UnsupportedLookAndFeelException e) {
+                // keep the default look
+            }
+            new MainWindow().setVisible(true);
+        });
     }
 
     private JPanel createCutTab() {
@@ -155,16 +158,35 @@ public class MainWindow extends JFrame {
         refresh();
     }
 
+    /** Creates the side panels. Called again when the unit changes, because their labels show the unit. */
+    private void buildSidePanels() {
+        editors.put(CutType.VERTICAL, new StraightCutPanel(CutType.VERTICAL, controller, this::refresh));
+        editors.put(CutType.HORIZONTAL, new StraightCutPanel(CutType.HORIZONTAL, controller, this::refresh));
+        editors.put(CutType.RECTANGULAR, new RectangularCutPanel(controller, this::refresh));
+        editors.put(CutType.BORDER, new BorderCutPanel(controller, this::refresh));
+        defaultSide = createDefaultSide();
+        sideKey = null; // forces the side panel to be shown again
+    }
+
+    /** Called by the View menu. */
+    public void unitsChanged() {
+        buildSidePanels();
+        refresh();
+    }
+
     private JPanel createDefaultSide() {
         JPanel panel = new JPanel(new BorderLayout(6, 6));
         panel.setBorder(BorderFactory.createTitledBorder("View"));
 
-        JCheckBox grid = new JCheckBox("Show grid (cuts snap to it when dragged)");
+        JCheckBox grid = new JCheckBox("Show grid (cuts snap to it when dragged)", drawingPanel.isShowGrid());
         grid.addActionListener(e -> drawingPanel.setShowGrid(grid.isSelected()));
-        JSpinner spacing = new JSpinner(new SpinnerNumberModel(drawingPanel.getGridSpacing(), 1, 500, 1));
-        spacing.addChangeListener(e -> drawingPanel.setGridSpacing((Integer) spacing.getValue()));
+        // The spinner shows the spacing in the current unit; the drawing panel keeps it in mm.
+        double step = Units.current() == Units.Unit.MM ? 1 : 0.125;
+        double shown = Math.round(Units.toDisplay(drawingPanel.getGridSpacing()) / step) * step;
+        JSpinner spacing = new JSpinner(new SpinnerNumberModel(Math.max(step, shown), step, 1000, step));
+        spacing.addChangeListener(e -> drawingPanel.setGridSpacing(Units.toMm((Double) spacing.getValue())));
         JPanel spacingRow = new JPanel(new FlowLayout(FlowLayout.LEFT));
-        spacingRow.add(new JLabel("Grid spacing (mm):"));
+        spacingRow.add(new JLabel(Units.label("Grid spacing")));
         spacingRow.add(spacing);
 
         JButton fit = new JButton("Fit panel to window");
@@ -214,9 +236,9 @@ public class MainWindow extends JFrame {
         Optional<CutDto> selected = controller.getSelectedCut();
 
         Optional<ToolDto> tool = controller.getDefaultTool();
-        activeTool.setText(tool.map(t -> "Tool for new cuts: " + t).orElse("No tool for new cuts"));
-        status.setText(String.format("Panel %.1f × %.1f × %.1f mm  |  %d cut(s)%s", panel.width(), panel.length(),
-                panel.thickness(), panel.cuts().size(),
+        activeTool.setText(tool.map(t -> "Tool for new cuts: " + Units.describe(t)).orElse("No tool for new cuts"));
+        status.setText(String.format("Panel %s × %s × %s  |  %d cut(s)%s", Units.format(panel.width()),
+                Units.format(panel.length()), Units.withUnit(panel.thickness()), panel.cuts().size(),
                 selected.map(c -> "  |  Selected: " + c.type() + " at " + DrawingPanel.point(c.origin())).orElse("")));
 
         toolPanel.refresh();

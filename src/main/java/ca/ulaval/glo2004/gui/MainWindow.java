@@ -88,7 +88,7 @@ public class MainWindow extends JFrame {
         JTabbedPane tabs = new JTabbedPane();
         tabs.addTab("Cuts", createCutTab());
         tabs.addTab("Tools", toolPanel);
-        tabs.setPreferredSize(new Dimension(0, 170));
+        tabs.setPreferredSize(new Dimension(0, 140));
         JPanel bottom = new JPanel(new BorderLayout());
         bottom.add(tabs, BorderLayout.CENTER);
         status.setBorder(BorderFactory.createEmptyBorder(4, 8, 4, 8));

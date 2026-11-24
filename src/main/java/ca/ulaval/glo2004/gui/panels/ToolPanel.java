@@ -58,13 +58,16 @@ public class ToolPanel extends JPanel {
         create.add(new JLabel(Units.label("Width")));
         create.add(width);
         create.add(add);
-        add(create, BorderLayout.NORTH);
 
         JPanel buttons = new JPanel(new FlowLayout(FlowLayout.LEFT));
         buttons.add(setDefault);
         buttons.add(changeWidth);
         buttons.add(remove);
-        add(buttons, BorderLayout.SOUTH);
+        // List on the left (it gets the whole height); creation form and buttons stacked on the right.
+        JPanel right = new JPanel(new java.awt.GridLayout(2, 1));
+        right.add(create);
+        right.add(buttons);
+        add(right, BorderLayout.EAST);
 
         add.addActionListener(e -> run(() -> {
             controller.addTool(new ToolDto(UUID.randomUUID(), name.getText(), Units.parse(width.getText()), false));

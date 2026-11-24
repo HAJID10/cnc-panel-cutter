@@ -16,6 +16,22 @@ public class LCut extends Cut {
 
     public LCut(Point2D.Double origin, Point2D.Double corner, Tool tool) {
         super(origin, corner, tool);
+        checkArms(origin, corner);
+    }
+
+    /** An L needs two arms: the corner can't share the start's x or y. */
+    private static void checkArms(Point2D.Double origin, Point2D.Double corner) {
+        if (origin.x == corner.x || origin.y == corner.y) {
+            throw new IllegalArgumentException("An L-shaped cut needs two arms: the corner must not be in line with the start.");
+        }
+    }
+
+    /** Changes both the start and the corner. */
+    @Override
+    public void reshape(Point2D.Double newOrigin, Point2D.Double newCorner) {
+        checkArms(newOrigin, newCorner);
+        origin = copy(newOrigin);
+        destination = copy(newCorner);
     }
 
     @Override

@@ -72,6 +72,11 @@ public abstract class Cut implements Serializable {
         throw new IllegalArgumentException("This type of cut can't be resized.");
     }
 
+    /** Sets both ends at once. Only cuts defined by two free points (the L) support it. */
+    public void reshape(Point2D.Double newOrigin, Point2D.Double newDestination) {
+        throw new IllegalArgumentException("This type of cut can't be reshaped.");
+    }
+
     /**
      * Checks that the tool can actually make this cut. Does nothing by default; cuts with an inside (rectangle,
      * border) refuse to be smaller than the tool.

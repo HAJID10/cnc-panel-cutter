@@ -253,6 +253,26 @@ public class Panel implements Serializable {
         }
     }
 
+    /** Gives an L cut a new start and corner, checked like a new cut. */
+    public void reshapeCut(UUID cutId, Point2D.Double newOrigin, Point2D.Double newDestination) {
+        Cut cut = getCut(cutId);
+        Point2D.Double oldOrigin = cut.getOrigin();
+        Point2D.Double oldDestination = cut.getDestination();
+        cut.reshape(newOrigin, newDestination);
+        try {
+            if (!isInside(cut.getOrigin()) || !isInside(cut.getDestination())) {
+                throw new IllegalArgumentException("The cut goes outside the panel.");
+            }
+            cut.checkToolFits();
+            checkNotDuplicate(cut);
+            checkZones(cut);
+        } catch (IllegalArgumentException e) {
+            cut.origin = oldOrigin;
+            cut.destination = oldDestination;
+            throw e;
+        }
+    }
+
     public void setCutTool(UUID cutId, UUID toolId) {
         Tool tool = findTool(toolId).orElseThrow(() -> new IllegalArgumentException("Unknown tool."));
         Cut cut = getCut(cutId);

@@ -158,6 +158,19 @@ public class CncController {
         });
     }
 
+    /** Changes the start and corner of an L cut, its tool and depth, as one undo step (tool and depth may be null). */
+    public void editLCut(UUID cutId, Point2D.Double newOrigin, Point2D.Double newCorner, UUID toolId, Double depth) {
+        change(() -> {
+            if (toolId != null) {
+                panel.setCutTool(cutId, toolId);
+            }
+            if (depth != null) {
+                panel.setCutDepth(cutId, depth);
+            }
+            panel.reshapeCut(cutId, newOrigin, newCorner);
+        });
+    }
+
     public void setCutDepth(UUID cutId, double depth) {
         change(() -> panel.setCutDepth(cutId, depth));
     }

@@ -39,6 +39,7 @@ import ca.ulaval.glo2004.dto.ZoneDto;
 import ca.ulaval.glo2004.gui.DrawingPanel.Mode;
 import ca.ulaval.glo2004.gui.panels.BorderCutPanel;
 import ca.ulaval.glo2004.gui.panels.CutEditorPanel;
+import ca.ulaval.glo2004.gui.panels.LCutPanel;
 import ca.ulaval.glo2004.gui.panels.RectangularCutPanel;
 import ca.ulaval.glo2004.gui.panels.StraightCutPanel;
 import ca.ulaval.glo2004.gui.panels.ToolPanel;
@@ -168,6 +169,7 @@ public class MainWindow extends JFrame {
         editors.put(CutType.HORIZONTAL, new StraightCutPanel(CutType.HORIZONTAL, controller, this::refresh));
         editors.put(CutType.RECTANGULAR, new RectangularCutPanel(controller, this::refresh));
         editors.put(CutType.BORDER, new BorderCutPanel(controller, this::refresh));
+        editors.put(CutType.L, new LCutPanel(controller, this::refresh));
         zonePanel = new ZonePanel(controller, this::refresh);
         defaultSide = createDefaultSide();
         sideKey = null; // forces the side panel to be shown again

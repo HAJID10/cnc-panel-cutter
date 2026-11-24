@@ -1,0 +1,6 @@
+# Line endings: LF in the repository; scripts keep the ending their shell needs.
+* text=auto
+mvnw text eol=lf
+*.cmd text eol=crlf
+*.png binary
+*.vpp binary

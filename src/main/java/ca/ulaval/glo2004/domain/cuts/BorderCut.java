@@ -27,9 +27,24 @@ public class BorderCut extends Cut {
         return CutType.BORDER;
     }
 
+    /**
+     * origin/destination are the corners of the piece that is kept. The tool runs half a tool width outside them,
+     * so the piece comes out at exactly the requested size.
+     */
     @Override
     protected Shape path() {
-        return new Rectangle2D.Double(origin.x, origin.y, getWidth(), getHeight());
+        double halfTool = tool.getWidth() / 2;
+        return new Rectangle2D.Double(origin.x - halfTool, origin.y - halfTool,
+                getWidth() + tool.getWidth(), getHeight() + tool.getWidth());
+    }
+
+    /** A final piece smaller than the tool makes no sense. */
+    @Override
+    public void checkToolFits() {
+        if (getWidth() < tool.getWidth() || getHeight() < tool.getWidth()) {
+            throw new IllegalArgumentException(String.format(
+                    "The final size is smaller than the tool (%.1f mm).", tool.getWidth()));
+        }
     }
 
     /** A border stays centred on the panel, so it never moves. */

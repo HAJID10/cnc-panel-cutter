@@ -12,13 +12,23 @@ import ca.ulaval.glo2004.dto.PanelDto;
 
 /** Undo / redo history made of full snapshots of the panel. */
 public class History {
+    /** Number of steps kept; older ones are forgotten so memory stays bounded. */
+    public static final int MAX_STEPS = 100;
+
     private final Deque<PanelDto> undoStack = new ArrayDeque<>();
     private final Deque<PanelDto> redoStack = new ArrayDeque<>();
 
     /** Records the state before a change. A new change makes the redo history meaningless, so it is cleared. */
     public void record(PanelDto stateBeforeChange) {
         undoStack.push(copy(stateBeforeChange));
+        if (undoStack.size() > MAX_STEPS) {
+            undoStack.removeLast(); // the oldest step
+        }
         redoStack.clear();
+    }
+
+    public int undoSteps() {
+        return undoStack.size();
     }
 
     /** Returns the previous state, or null if there is nothing to undo. */

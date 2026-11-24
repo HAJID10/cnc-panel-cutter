@@ -1,6 +1,7 @@
 package ca.ulaval.glo2004.controller;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.awt.Point;
@@ -105,6 +106,32 @@ class CncControllerTest {
         controller.addVerticalCut(100, null);
         controller.setToolWidth(saw.id(), 8.0);
         assertEquals(8.0, cuts().get(0).tool().width());
+    }
+
+    @Test
+    void aRefusedActionLeavesNoUndoStep() {
+        controller.addVerticalCut(100, null);
+        assertThrows(IllegalArgumentException.class, () -> controller.addVerticalCut(5000, null));
+        controller.undo(); // must undo the first cut, not an empty step
+        assertTrue(cuts().isEmpty());
+    }
+
+    @Test
+    void aRefusedEditChangesNothing() {
+        controller.addRectangularCut(new Point(100, 100), new Point(200, 200), null);
+        CutDto before = cuts().get(0);
+        // The resize is fine but the move goes outside the panel: nothing at all must change.
+        assertThrows(IllegalArgumentException.class,
+                () -> controller.editCut(before.id(), new Point(880, 100), 50, 50, null));
+        assertEquals(before, cuts().get(0));
+    }
+
+    @Test
+    void thePanelKeepsItsIdAfterUndo() {
+        UUID id = controller.getPanel().id();
+        controller.addVerticalCut(100, null);
+        controller.undo();
+        assertEquals(id, controller.getPanel().id());
     }
 
     @Test

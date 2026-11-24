@@ -59,8 +59,24 @@ public class Panel implements Serializable {
         return tools.stream().filter(tool -> tool.getId().equals(toolId)).findFirst();
     }
 
+    /**
+     * Removes a tool that no cut uses. If it was the default tool, the first remaining tool becomes the default,
+     * so new cuts can still be added.
+     */
     public void removeTool(UUID toolId) {
-        tools.removeIf(tool -> tool.getId().equals(toolId));
+        Tool tool = findTool(toolId).orElseThrow(() -> new IllegalArgumentException("Unknown tool."));
+        long users = cuts.stream().filter(cut -> cut.getTool() == tool).count();
+        if (users > 0) {
+            throw new IllegalArgumentException(String.format(
+                    "%s is used by %d cut(s). Give them another tool first.", tool.getName(), users));
+        }
+        if (tools.size() == 1) {
+            throw new IllegalArgumentException("The panel needs at least one tool.");
+        }
+        tools.remove(tool);
+        if (tool.isDefault()) {
+            tools.get(0).setDefault(true);
+        }
     }
 
     public Tool getDefaultTool() {
@@ -74,7 +90,14 @@ public class Panel implements Serializable {
     /** Changes a tool's width; the cuts that use it follow. */
     public void setToolWidth(UUID toolId, double newWidth) {
         Tool tool = findTool(toolId).orElseThrow(() -> new IllegalArgumentException("Unknown tool."));
+        double oldWidth = tool.getWidth();
         tool.setWidth(newWidth);
+        try {
+            cuts.stream().filter(cut -> cut.getTool() == tool).forEach(Cut::checkToolFits);
+        } catch (IllegalArgumentException e) {
+            tool.setWidth(oldWidth); // a wider tool would no longer fit in one of its cuts
+            throw e;
+        }
         cuts.stream().filter(cut -> cut.getTool() == tool).forEach(Cut::toolChanged);
     }
 
@@ -92,12 +115,21 @@ public class Panel implements Serializable {
 
     // --- Adding cuts ---
 
-    /** Adds a cut after checking that it lies on the panel. */
+    /** Adds a cut after checking that it lies on the panel, fits its tool and is not a duplicate. */
     public void addCut(Cut cut) {
         if (!isInside(cut.getOrigin()) || !isInside(cut.getDestination())) {
             throw new IllegalArgumentException("The cut goes outside the panel.");
         }
+        cut.checkToolFits();
+        checkNotDuplicate(cut);
         cuts.add(cut);
+    }
+
+    /** Refuses a cut identical to another one: the tool would just cut the same groove twice. */
+    private void checkNotDuplicate(Cut cut) {
+        if (cuts.stream().anyMatch(other -> cut.sameAs(other))) {
+            throw new IllegalArgumentException("There is already the same cut at this place.");
+        }
     }
 
     public void addVerticalCut(int x, UUID toolId) {
@@ -143,23 +175,45 @@ public class Panel implements Serializable {
             throw new IllegalArgumentException("The cut would go outside the panel.");
         }
         cut.translate(dx, dy);
+        try {
+            checkNotDuplicate(cut);
+        } catch (IllegalArgumentException e) {
+            cut.translate(-dx, -dy); // put it back
+            throw e;
+        }
     }
 
     /** Resizes a cut that has a width and a height (rectangle, border). */
     public void resizeCut(UUID cutId, int newWidth, int newHeight) {
         Cut cut = getCut(cutId);
-        int oldWidth = cut.getWidth();
-        int oldHeight = cut.getHeight();
+        Point oldOrigin = cut.getOrigin();
+        Point oldDestination = cut.getDestination();
         cut.resize(newWidth, newHeight);
-        if (!isInside(cut.getOrigin()) || !isInside(cut.getDestination())) {
-            cut.resize(oldWidth, oldHeight); // put it back as it was
-            throw new IllegalArgumentException("The new size goes outside the panel.");
+        try {
+            if (!isInside(cut.getOrigin()) || !isInside(cut.getDestination())) {
+                throw new IllegalArgumentException("The new size goes outside the panel.");
+            }
+            cut.checkToolFits();
+            checkNotDuplicate(cut);
+        } catch (IllegalArgumentException e) {
+            // Put it back exactly as it was (resizing back could round differently around the centre).
+            cut.origin = oldOrigin;
+            cut.destination = oldDestination;
+            throw e;
         }
     }
 
     public void setCutTool(UUID cutId, UUID toolId) {
         Tool tool = findTool(toolId).orElseThrow(() -> new IllegalArgumentException("Unknown tool."));
-        getCut(cutId).setTool(tool);
+        Cut cut = getCut(cutId);
+        Tool oldTool = cut.getTool();
+        cut.setTool(tool);
+        try {
+            cut.checkToolFits();
+        } catch (IllegalArgumentException e) {
+            cut.setTool(oldTool);
+            throw e;
+        }
     }
 
     public void removeCut(UUID cutId) {

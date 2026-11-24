@@ -32,10 +32,20 @@ public class CncController {
         this.panel = panelMapper.toDomain(initialPanel);
     }
 
-    /** Runs a change on the panel, after recording the current state for undo. */
+    /**
+     * Runs a change on the panel. The state before the change goes into the undo history only if the change
+     * succeeds; if it is refused, the panel is put back as it was, so a refused action leaves no trace (and a
+     * multi-step edit is all-or-nothing).
+     */
     private void change(Runnable action) {
-        history.record(getPanel());
-        action.run();
+        PanelDto before = getPanel();
+        try {
+            action.run();
+        } catch (RuntimeException e) {
+            panel = panelMapper.toDomain(before);
+            throw e;
+        }
+        history.record(before);
     }
 
     // --- Panel, history and files ---

@@ -139,6 +139,77 @@ class PanelTest {
         assertThrows(UnsupportedOperationException.class, () -> panel.getCuts().clear());
     }
 
+    // --- Fixes from the 2026 review ---
+
+    @Test
+    void aToolInUseCannotBeRemoved() {
+        Tool bit = new Tool("Bit", 6.0);
+        panel.addTool(bit);
+        panel.addVerticalCut(300, bit.getId());
+        IllegalArgumentException e = assertThrows(IllegalArgumentException.class, () -> panel.removeTool(bit.getId()));
+        assertTrue(e.getMessage().contains("1 cut"));
+        assertEquals(2, panel.getTools().size());
+    }
+
+    @Test
+    void removingTheDefaultToolPicksAnotherOne() {
+        Tool bit = new Tool("Bit", 6.0);
+        panel.addTool(bit);
+        panel.removeTool(saw.getId());
+        assertEquals(bit, panel.getDefaultTool());
+        panel.addVerticalCut(300, null); // still possible
+        assertEquals(1, panel.getCuts().size());
+    }
+
+    @Test
+    void theLastToolCannotBeRemoved() {
+        assertThrows(IllegalArgumentException.class, () -> panel.removeTool(saw.getId()));
+    }
+
+    @Test
+    void lCutDrawnBackwardsHasPositiveSizes() {
+        panel.addLCut(new Point(500, 500), new Point(400, 300), null);
+        assertEquals(100, cut(0).getWidth());
+        assertEquals(200, cut(0).getHeight());
+        assertTrue(cut(0).contains(new Point(450, 300)), "horizontal arm, drawn towards the left");
+        assertTrue(cut(0).contains(new Point(400, 400)), "vertical arm, drawn upwards");
+    }
+
+    @Test
+    void anExactDuplicateIsRefused() {
+        panel.addVerticalCut(300, null);
+        assertThrows(IllegalArgumentException.class, () -> panel.addVerticalCut(300, null));
+        panel.addVerticalCut(400, null);
+        assertThrows(IllegalArgumentException.class, () -> panel.moveCut(cut(1).getId(), new Point(300, 0)));
+        assertEquals(400, cut(1).getOrigin().x, "a refused move leaves the cut where it was");
+    }
+
+    @Test
+    void aRectangleSmallerThanTheToolIsRefused() {
+        assertThrows(IllegalArgumentException.class, () -> panel.addRectangularCut(new Point(10, 10), new Point(12, 12), null));
+        panel.addRectangularCut(new Point(10, 10), new Point(30, 30), null);
+        assertThrows(IllegalArgumentException.class, () -> panel.resizeCut(cut(0).getId(), 3, 20));
+        assertEquals(20, cut(0).getWidth());
+        assertThrows(IllegalArgumentException.class, () -> panel.setToolWidth(saw.getId(), 25), "tool wider than its cut");
+        assertEquals(4.0, saw.getWidth());
+    }
+
+    @Test
+    void aBorderSmallerThanTheToolIsRefused() {
+        assertThrows(IllegalArgumentException.class, () -> panel.addBorderCut(3, 500, null));
+    }
+
+    @Test
+    void theBorderKeepsExactlyTheRequestedSize() {
+        // The tool runs outside the final piece: the piece left inside the cut is exactly 800 × 1000.
+        panel.addBorderCut(800, 1000, null);
+        java.awt.geom.Area kept = new java.awt.geom.Area(new java.awt.geom.Rectangle2D.Double(0, 0, 900, 1200));
+        kept.subtract(new java.awt.geom.Area(cut(0).getCutArea()));
+        kept.intersect(new java.awt.geom.Area(new java.awt.geom.Rectangle2D.Double(50, 100, 800, 1000)));
+        assertEquals(new java.awt.geom.Rectangle2D.Double(50, 100, 800, 1000), kept.getBounds2D());
+        assertFalse(cut(0).getCutArea().intersects(51, 101, 798, 998), "the tool never enters the final piece");
+    }
+
     @Test
     void onlyOneDefaultTool() {
         Tool bit = new Tool("Bit", 10.0);

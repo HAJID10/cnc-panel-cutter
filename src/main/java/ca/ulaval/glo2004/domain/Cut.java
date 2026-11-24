@@ -72,14 +72,27 @@ public abstract class Cut implements Serializable {
         throw new IllegalArgumentException("This type of cut can't be resized.");
     }
 
-    /** Horizontal extent of the path, from origin to destination. */
-    public int getWidth() {
-        return destination.x - origin.x;
+    /**
+     * Checks that the tool can actually make this cut. Does nothing by default; cuts with an inside (rectangle,
+     * border) refuse to be smaller than the tool.
+     */
+    public void checkToolFits() {
     }
 
-    /** Vertical extent of the path, from origin to destination. */
+    /** True if both cuts are the same kind of cut at exactly the same place. */
+    public boolean sameAs(Cut other) {
+        return other != this && type() == other.type() && origin.equals(other.origin)
+                && destination.equals(other.destination);
+    }
+
+    /** Horizontal size, always positive (an L can be drawn towards the left). */
+    public int getWidth() {
+        return Math.abs(destination.x - origin.x);
+    }
+
+    /** Vertical size, always positive (an L can be drawn upwards). */
     public int getHeight() {
-        return destination.y - origin.y;
+        return Math.abs(destination.y - origin.y);
     }
 
     /** Material removed by the tool. */

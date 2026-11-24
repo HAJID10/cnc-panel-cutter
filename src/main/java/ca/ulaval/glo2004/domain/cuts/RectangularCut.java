@@ -37,6 +37,15 @@ public class RectangularCut extends Cut {
                 Math.max(0, getWidth() - tool.getWidth()), Math.max(0, getHeight() - tool.getWidth()));
     }
 
+    /** A rectangle narrower than the tool can't be cut out. */
+    @Override
+    public void checkToolFits() {
+        if (getWidth() < tool.getWidth() || getHeight() < tool.getWidth()) {
+            throw new IllegalArgumentException(String.format(
+                    "The rectangle is smaller than the tool (%.1f mm).", tool.getWidth()));
+        }
+    }
+
     @Override
     protected boolean selectableInside() {
         return true;
